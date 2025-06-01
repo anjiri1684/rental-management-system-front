@@ -127,6 +127,14 @@ const toggleMobileMenu = () => {
           Contact
         </RouterLink>
         <RouterLink
+          to="/dashboard"
+          class="hover:text-blue-600 transition-colors duration-200"
+          active-class="text-blue-600"
+          @click="toggleMobileMenu"
+        >
+          Dashboard
+        </RouterLink>
+        <RouterLink
           to="/login"
           class="hover:text-blue-600 transition-colors duration-200"
           active-class="text-blue-600"
