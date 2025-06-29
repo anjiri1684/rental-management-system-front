@@ -11,6 +11,10 @@ const filterStatus = ref('')
 const loading = ref(false)
 const loadingTenants = ref(false)
 const errorMessage = ref('')
+const showUpdateModal = ref(false)
+const selectedInvoice = ref(null)
+const newStatus = ref('')
+const updating = ref(false)
 
 const router = useRouter()
 const toast = useToast()
@@ -73,6 +77,47 @@ const formatDate = (date) => {
 
 const viewInvoice = (id) => {
     router.push(`/dashboard/invoices/${id}`)
+}
+
+const openUpdateModal = (invoice) => {
+    selectedInvoice.value = invoice
+    newStatus.value = invoice.status
+    showUpdateModal.value = true
+}
+
+const closeUpdateModal = () => {
+    showUpdateModal.value = false
+    selectedInvoice.value = null
+    newStatus.value = ''
+}
+
+const updateInvoiceStatus = async () => {
+    if (!newStatus.value) {
+        toast.error('Please select a status')
+        return
+    }
+
+    updating.value = true
+    try {
+        const response = await axios.patch(`http://localhost:8080/api/v1/invoices/${selectedInvoice.value.id}/status`, {
+            status: newStatus.value
+        })
+
+        // Update the invoice in the local array
+        const index = invoices.value.findIndex(inv => inv.id === selectedInvoice.value.id)
+        if (index !== -1) {
+            invoices.value[index] = response.data.invoice
+        }
+
+        toast.success('Invoice status updated successfully')
+        closeUpdateModal()
+    } catch (error) {
+        const errMsg = error.response?.data?.error || 'Failed to update invoice status'
+        toast.error(errMsg)
+        console.error('Error updating invoice status:', error.response?.data || error)
+    } finally {
+        updating.value = false
+    }
 }
 
 onMounted(() => {
@@ -189,9 +234,15 @@ onMounted(() => {
                         <td class="px-6 py-4 whitespace-nowrap text-sm">
                             <button
                                 @click="viewInvoice(invoice.id)"
-                                class="text-blue-600 hover:text-blue-800"
+                                class="text-blue-600 hover:text-blue-800 mr-3"
                             >
                                 View
+                            </button>
+                            <button
+                                @click="openUpdateModal(invoice)"
+                                class="text-yellow-600 hover:text-yellow-800"
+                            >
+                                Update Status
                             </button>
                         </td>
                     </tr>
@@ -201,6 +252,48 @@ onMounted(() => {
                 </tbody>
             </table>
             <p v-if="loading" class="text-center text-sm text-gray-600 mt-4">Loading invoices...</p>
+        </div>
+
+        <!-- Update Status Modal -->
+        <div v-if="showUpdateModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
+            <div class="bg-white rounded-lg p-6 w-full max-w-md">
+                <h2 class="text-xl font-semibold mb-4">Update Invoice Status</h2>
+                <div v-if="selectedInvoice" class="mb-4">
+                    <p>Invoice #{{ selectedInvoice.id }} for {{ selectedInvoice.tenant?.first_name }} {{ selectedInvoice.tenant?.last_name }}</p>
+                    <p>Amount: KES {{ selectedInvoice.amount.toLocaleString() }}</p>
+                    <p>Current Status: {{ selectedInvoice.status.charAt(0).toUpperCase() + selectedInvoice.status.slice(1) }}</p>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">New Status</label>
+                    <select
+                        v-model="newStatus"
+                        class="w-full border-gray-300 pl-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                        :disabled="updating"
+                    >
+                        <option value="">Select Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="paid">Paid</option>
+                        <option value="overdue">Overdue</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-4">
+                    <button
+                        @click="closeUpdateModal"
+                        class="px-4 py-2 bg-gray-300 text-gray-900 rounded-lg hover:bg-gray-400 transition-all duration-300"
+                        :disabled="updating"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        @click="updateInvoiceStatus"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300"
+                        :disabled="updating"
+                    >
+                        <span v-if="updating">Updating...</span>
+                        <span v-else>Update Status</span>
+                    </button>
+                </div>
+            </div>
         </div>
 
         <div v-if="errorMessage" class="mt-4 text-red-600">{{ errorMessage }}</div>

@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import axios from 'axios'
 
-// Form state
 const tenantId = ref(null)
 const apartmentId = ref(null)
 const amount = ref('')
@@ -20,11 +19,13 @@ const showSuccessModal = ref(false)
 const showErrorModal = ref(false)
 const errorMessage = ref('')
 const errors = ref({})
+const successMessage = ref('')
+const sentMessage = ref('') // New: To display the sent message
+const messageStatus = ref('') // New: To display message status
 
 const router = useRouter()
 const toast = useToast()
 
-// Fetch active tenants
 const fetchTenants = async () => {
     loadingTenants.value = true
     try {
@@ -41,7 +42,6 @@ const fetchTenants = async () => {
     }
 }
 
-// Fetch occupied apartments for the selected tenant
 const fetchApartments = async () => {
     if (!tenantId.value) {
         apartments.value = []
@@ -53,11 +53,9 @@ const fetchApartments = async () => {
         const response = await axios.get('http://localhost:8080/api/v1/apartments', {
             params: { status: 'occupied' }
         })
-        // Filter apartments to match the selected tenant's apartment_id
         const tenant = tenants.value.find(t => t.id === tenantId.value)
         apartments.value = tenant ? response.data.data.filter(a => a.id === tenant.apartment_id) : []
         console.log('Fetched apartments:', apartments.value)
-        // Auto-select if only one apartment
         if (apartments.value.length === 1) {
             apartmentId.value = apartments.value[0].id
         }
@@ -69,12 +67,10 @@ const fetchApartments = async () => {
     }
 }
 
-// Watch tenantId changes to update apartments
 watch(tenantId, () => {
     fetchApartments()
 })
 
-// Validate form
 const validateForm = () => {
     errors.value = {}
     if (!tenantId.value) errors.value.tenantId = 'Tenant is required'
@@ -89,18 +85,16 @@ const validateForm = () => {
     return Object.keys(errors.value).length === 0
 }
 
-// Handle form submission
 const submitForm = () => {
     if (validateForm()) {
         showConfirmModal.value = true
     }
 }
 
-// Confirm submission
 const confirmSubmit = async () => {
     loading.value = true
     try {
-        await axios.post('http://localhost:8080/api/v1/invoices', {
+        const response = await axios.post('http://localhost:8080/api/v1/invoices', {
             tenant_id: tenantId.value,
             apartment_id: apartmentId.value,
             amount: parseFloat(amount.value),
@@ -109,8 +103,11 @@ const confirmSubmit = async () => {
         })
         loading.value = false
         showConfirmModal.value = false
+        successMessage.value = 'Invoice created successfully'
+        sentMessage.value = response.data.message || ''
+        messageStatus.value = response.data.status || 'unknown'
         showSuccessModal.value = true
-        toast.success('Invoice created successfully')
+        toast.success(`${successMessage.value}${sentMessage.value ? ' and message sent to tenant' : ''}`)
     } catch (error) {
         loading.value = false
         showConfirmModal.value = false
@@ -124,20 +121,17 @@ const confirmSubmit = async () => {
     }
 }
 
-// Close success modal and redirect
 const closeSuccessModal = () => {
     showSuccessModal.value = false
     resetForm()
     router.push('/dashboard/invoices')
 }
 
-// Close error modal
 const closeErrorModal = () => {
     showErrorModal.value = false
     errorMessage.value = ''
 }
 
-// Reset form
 const resetForm = () => {
     tenantId.value = null
     apartmentId.value = null
@@ -145,9 +139,10 @@ const resetForm = () => {
     dueDate.value = ''
     description.value = ''
     errors.value = {}
+    sentMessage.value = ''
+    messageStatus.value = ''
 }
 
-// Fetch tenants on mount
 onMounted(() => {
     fetchTenants()
 })
@@ -155,7 +150,6 @@ onMounted(() => {
 
 <template>
     <div class="p-6">
-        <!-- Header -->
         <div class="flex justify-between items-center mb-6 animate__animated animate__fadeInDown">
             <h1 class="text-3xl font-bold text-gray-900">Create Invoice</h1>
             <button
@@ -166,7 +160,15 @@ onMounted(() => {
             </button>
         </div>
 
-        <!-- Invoice Form -->
+        <!-- Notification Banner for Sent Message -->
+        <div
+            v-if="sentMessage"
+            class="mb-4 p-4 bg-green-100 border-l-4 border-green-500 text-green-700 rounded-lg animate__animated animate__fadeIn"
+        >
+            <p class="font-semibold">Message Sent to Tenant (Status: {{ messageStatus }})</p>
+            <p>{{ sentMessage }}</p>
+        </div>
+
         <div class="bg-white/95 backdrop-blur-sm shadow-2xl rounded-lg p-6 animate__animated animate__fadeInUp animate__delay-1">
             <form @submit.prevent="submitForm" :disabled="loading || tenants.length === 0">
                 <h2 class="text-xl font-semibold text-gray-900 mb-4">Invoice Details</h2>
@@ -242,7 +244,6 @@ onMounted(() => {
                     </div>
                 </div>
 
-                <!-- Actions -->
                 <div class="flex justify-end space-x-4">
                     <button
                         type="button"
@@ -263,7 +264,6 @@ onMounted(() => {
             </form>
         </div>
 
-        <!-- Confirmation Modal -->
         <div
             v-if="showConfirmModal"
             class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -271,7 +271,7 @@ onMounted(() => {
             <div class="bg-white rounded-lg p-6 max-w-md w-full animate__animated animate__zoomIn">
                 <h2 class="text-xl font-bold text-gray-900 mb-4">Confirm Invoice Creation</h2>
                 <p class="text-gray-600 mb-4">
-                    Create invoice for {{ tenants.find(t => t.id === tenantId)?.first_name }} {{ tenants.find(t => t.id === tenantId)?.last_name }} ({{ description }})?
+                    Create invoice for {{ tenants.find(t => t.id === tenantId)?.first_name }} {{ tenants.find(t => t.id === tenantId)?.last_name }} ({{ description }})? A message will be sent to the tenant.
                 </p>
                 <div class="flex justify-end space-x-4">
                     <button
@@ -292,14 +292,14 @@ onMounted(() => {
             </div>
         </div>
 
-        <!-- Success Modal -->
         <div
             v-if="showSuccessModal"
             class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
         >
             <div class="bg-white rounded-lg p-6 max-w-md w-full animate__animated animate__zoomIn">
-                <h2 class="text-xl font-bold text-green-600 mb-4">Invoice Created Successfully</h2>
-                <p class="text-gray-600 mb-4">Invoice for {{ description }} has been created.</p>
+                <h2 class="text-xl font-bold text-green-600 mb-4">Success</h2>
+                <p class="text-gray-600 mb-4">{{ successMessage }}</p>
+                <p v-if="sentMessage" class="text-gray-600 mb-4">Message sent (Status: {{ messageStatus }}): {{ sentMessage }}</p>
                 <div class="flex justify-end">
                     <button
                         @click="closeSuccessModal"
@@ -311,7 +311,6 @@ onMounted(() => {
             </div>
         </div>
 
-        <!-- Error Modal -->
         <div
             v-if="showErrorModal"
             class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
