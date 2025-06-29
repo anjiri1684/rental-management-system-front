@@ -29,7 +29,7 @@ const isFormValid = computed(() => {
     state.lastName.trim().length >= 2 &&
     emailRegex.test(state.email) &&
     phoneRegex.test(state.phoneNumber) &&
-    state.password.length >= 8 &&
+    state.password.length >= 6 &&
     state.password === state.confirmPassword &&
     state.terms
   )
@@ -51,7 +51,7 @@ const HandleRegister = async () => {
   }
 
   try {
-    const response = await axios.post('http://localhost:3000/api/auth/register', registerData)
+    const response = await axios.post('http://127.0.0.1:8080/api/v1/auth/register', registerData)
     const { token } = response.data
     localStorage.setItem('authToken', token)
 

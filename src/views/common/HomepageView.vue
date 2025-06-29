@@ -1,6 +1,6 @@
 <script setup>
 import { RouterLink } from 'vue-router'
-import heroImage from '../assets/heroImage.png'
+import heroImage from '../../assets/heroImage.png'
 </script>
 
 <template>

@@ -1,6 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import axios from 'axios'
+import { useToast } from 'vue-toastification'
 
 // Form state
 const firstName = ref('')
@@ -10,78 +12,86 @@ const phoneNumber = ref('')
 const idNumber = ref('')
 const houseNumber = ref('')
 const unitType = ref('')
-const idFrontImage = ref(null)
-const idBackImage = ref(null)
+const apartmentId = ref(0) // Added for ApartmentID
 const nextOfKinFirstName = ref('')
 const nextOfKinLastName = ref('')
 const nextOfKinPhone = ref('')
 const showConfirmModal = ref(false)
+const showSuccessModal = ref(false)
+const showErrorModal = ref(false)
+const errorMessage = ref('')
+const loading = ref(false)
+const apartments = ref([]) // To store available apartments
 
-// Unit types
-const unitTypes = ref([
-  'Bedsitter',
-  'Single Room',
-  'One Bedroom',
-  'Two Bedroom',
-  'Three Bedroom',
-  'Studio',
-  'Penthouse'
-])
 
 // Form errors
 const errors = ref({})
 
-// Router and Route
+// Router and Toast
 const router = useRouter()
 const route = useRoute()
+const toast = useToast()
 
+// Fetch tenant data
 const fetchTenant = async () => {
-  // Dummy data for demonstration
-  const dummyTenants = {
-    1: {
-      id: 1,
-      firstName: 'John',
-      lastName: 'Kamau',
-      email: 'john.kamau@example.com',
-      phoneNumber: '+254123456789',
-      idNumber: '12345678',
-      houseNumber: 'A1',
-      unitType: 'One Bedroom',
-      nextOfKinFirstName: 'Jane',
-      nextOfKinLastName: 'Doe',
-      nextOfKinPhone: '+254987654321',
-    },
-    2: {
-      id: 2,
-      firstName: 'Mary',
-      lastName: 'Wanjiku',
-      email: 'mary.wanjiku@example.com',
-      phoneNumber: '+254234567890',
-      idNumber: '87654321',
-      houseNumber: 'B2',
-      unitType: 'Bedsitter',
-      nextOfKinFirstName: 'Peter',
-      nextOfKinLastName: 'Omondi',
-      nextOfKinPhone: '+254876543210',
-    },
-  }
-
-  const tenantId = route.params.id
-  const tenant = dummyTenants[tenantId]
-  if (tenant) {
-    firstName.value = tenant.firstName
-    lastName.value = tenant.lastName
+  loading.value = true
+  errorMessage.value = ''
+  try {
+    const response = await axios.get(`http://localhost:8080/api/v1/tenants/${route.params.id}`)
+    const tenant = response.data.data
+    firstName.value = tenant.first_name
+    lastName.value = tenant.last_name
     email.value = tenant.email
-    phoneNumber.value = tenant.phoneNumber
-    idNumber.value = tenant.idNumber
-    houseNumber.value = tenant.houseNumber
-    unitType.value = tenant.unitType
-    nextOfKinFirstName.value = tenant.nextOfKinFirstName
-    nextOfKinLastName.value = tenant.nextOfKinLastName
-    nextOfKinPhone.value = tenant.nextOfKinPhone
+    phoneNumber.value = tenant.phone_number
+    idNumber.value = tenant.id_number
+    houseNumber.value = tenant.house_number
+    unitType.value = tenant.unit_type
+    apartmentId.value = tenant.apartment_id
+    nextOfKinFirstName.value = tenant.next_of_kin_first_name
+    nextOfKinLastName.value = tenant.next_of_kin_last_name
+    nextOfKinPhone.value = tenant.next_of_kin_phone
+  } catch (err) {
+    errorMessage.value = err.response?.data?.error || 'Failed to fetch tenant'
+    if (err.response?.data?.details) {
+      errorMessage.value += ` (${err.response.data.details})`
+    }
+    showErrorModal.value = true
+    console.error('Fetch tenant error:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Fetch available apartments (vacant or current tenant's apartment)
+const fetchApartments = async () => {
+  try {
+    const response = await axios.get('http://localhost:8080/api/v1/apartments', {
+      params: { status: 'vacant' },
+    })
+    apartments.value = response.data.data
+    // Include current tenant's apartment if not vacant
+    if (apartmentId.value) {
+      const tenantApartmentResponse = await axios.get(`http://localhost:8080/api/v1/apartments/${apartmentId.value}`)
+      const tenantApartment = tenantApartmentResponse.data.data
+      if (!apartments.value.some(a => a.id === tenantApartment.id)) {
+        apartments.value.push(tenantApartment)
+      }
+    }
+  } catch (err) {
+    toast.error('Failed to fetch apartments')
+    console.error('Fetch apartments error:', err)
+  }
+}
+
+// Update houseNumber and unitType when apartmentId changes
+const updateApartmentDetails = () => {
+  const selectedApartment = apartments.value.find(a => a.id === apartmentId.value)
+  if (selectedApartment) {
+    houseNumber.value = selectedApartment.house_number
+    unitType.value = selectedApartment.unit_type
   } else {
-    // Handle tenant not found
-    router.push('/dashboard/view-tenants')
+    houseNumber.value = ''
+    unitType.value = ''
   }
 }
 
@@ -106,8 +116,7 @@ const validateForm = () => {
   } else if (!/^\d{6,}$/.test(idNumber.value.trim())) {
     errors.value.idNumber = 'ID number must be at least 6 digits'
   }
-  if (!houseNumber.value.trim()) errors.value.houseNumber = 'House number is required'
-  if (!unitType.value) errors.value.unitType = 'Unit type is required'
+  if (!apartmentId.value) errors.value.apartmentId = 'Apartment is required'
   if (!nextOfKinFirstName.value.trim()) errors.value.nextOfKinFirstName = 'Next of kin first name is required'
   if (!nextOfKinLastName.value.trim()) errors.value.nextOfKinLastName = 'Next of kin last name is required'
   if (!nextOfKinPhone.value.trim()) {
@@ -116,22 +125,11 @@ const validateForm = () => {
     errors.value.nextOfKinPhone = 'Invalid phone number (e.g., +254123456789)'
   }
 
-  return Object.keys(errors.value).length === 0
-}
-
-// Handle file uploads
-const handleFileUpload = (event, type) => {
-  const file = event.target.files[0]
-  if (file && ['image/jpeg', 'image/png'].includes(file.type)) {
-    if (type === 'front') {
-      idFrontImage.value = file
-    } else if (type === 'back') {
-      idBackImage.value = file
-    }
-    errors.value[type === 'front' ? 'idFrontImage' : 'idBackImage'] = ''
-  } else {
-    errors.value[type === 'front' ? 'idFrontImage' : 'idBackImage'] = 'Please upload a valid JPEG or PNG image'
+  if (Object.keys(errors.value).length > 0) {
+    toast.error('Please correct the form errors')
   }
+
+  return Object.keys(errors.value).length === 0
 }
 
 // Handle form submission
@@ -141,33 +139,52 @@ const submitForm = () => {
   }
 }
 
-const confirmSubmit = () => {
-  // Placeholder for submission logic
-  const formData = new FormData()
-  formData.append('id', route.params.id)
-  formData.append('firstName', firstName.value)
-  formData.append('lastName', lastName.value)
-  formData.append('email', email.value)
-  formData.append('phoneNumber', phoneNumber.value)
-  formData.append('idNumber', idNumber.value)
-  formData.append('houseNumber', houseNumber.value)
-  formData.append('unitType', unitType.value)
-  formData.append('nextOfKinFirstName', nextOfKinFirstName.value)
-  formData.append('nextOfKinLastName', nextOfKinLastName.value)
-  formData.append('nextOfKinPhone', nextOfKinPhone.value)
-  if (idFrontImage.value) formData.append('idFrontImage', idFrontImage.value)
-  if (idBackImage.value) formData.append('idBackImage', idBackImage.value)
-
-  console.log('Form Data:', Object.fromEntries(formData))
-
-  // Reset form
-  resetForm()
-  showConfirmModal.value = false
-
-  // Redirect to tenants list
-  router.push('/dashboard/tenants')
+// Confirm submission with API call
+const confirmSubmit = async () => {
+  loading.value = true
+  try {
+    await axios.patch(`http://localhost:8080/api/v1/tenants/${route.params.id}`, {
+      firstName: firstName.value,
+      lastName: lastName.value,
+      email: email.value,
+      phoneNumber: phoneNumber.value,
+      idNumber: idNumber.value,
+      houseNumber: houseNumber.value,
+      unitType: unitType.value,
+      apartmentId: apartmentId.value,
+      nextOfKinFirstName: nextOfKinFirstName.value,
+      nextOfKinLastName: nextOfKinLastName.value,
+      nextOfKinPhone: nextOfKinPhone.value,
+    })
+    loading.value = false
+    showConfirmModal.value = false
+    showSuccessModal.value = true
+  } catch (error) {
+    loading.value = false
+    showConfirmModal.value = false
+    errorMessage.value = error.response?.data?.error || 'Failed to update tenant'
+    if (error.response?.data?.details) {
+      errorMessage.value += ` (${error.response.data.details})`
+    }
+    showErrorModal.value = true
+    console.error('Submission error:', error)
+  }
 }
 
+// Close success modal and redirect
+const closeSuccessModal = () => {
+  showSuccessModal.value = false
+  resetForm()
+  router.push('/dashboard/view-tenants')
+}
+
+// Close error modal
+const closeErrorModal = () => {
+  showErrorModal.value = false
+  errorMessage.value = ''
+}
+
+// Reset form
 const resetForm = () => {
   firstName.value = ''
   lastName.value = ''
@@ -176,16 +193,18 @@ const resetForm = () => {
   idNumber.value = ''
   houseNumber.value = ''
   unitType.value = ''
-  idFrontImage.value = null
-  idBackImage.value = null
+  apartmentId.value = 0
   nextOfKinFirstName.value = ''
   nextOfKinLastName.value = ''
   nextOfKinPhone.value = ''
   errors.value = {}
 }
 
-// Fetch tenant data on mount
-onMounted(fetchTenant)
+// Fetch tenant and apartments on mount
+onMounted(() => {
+  fetchApartments()
+  fetchTenant()
+})
 </script>
 
 <template>
@@ -203,9 +222,14 @@ onMounted(fetchTenant)
       </div>
     </div>
 
+    <!-- Loading State -->
+    <div v-if="loading" class="text-center text-gray-600">
+      Loading tenant data...
+    </div>
+
     <!-- Edit Tenant Form -->
-    <div class="bg-white/95 backdrop-blur-sm shadow-2xl rounded-lg p-6 animate__animated animate__fadeInUp animate__delay-1">
-      <form @submit.prevent="submitForm">
+    <div v-else class="bg-white/95 backdrop-blur-sm shadow-2xl rounded-lg p-6 animate__animated animate__fadeInUp animate__delay-1">
+      <form @submit.prevent="submitForm" :disabled="loading">
         <!-- Tenant Details -->
         <h2 class="text-xl font-semibold text-gray-900 mb-4">Tenant Details</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -214,9 +238,10 @@ onMounted(fetchTenant)
             <input
               v-model="firstName"
               type="text"
-              class="w-full border-gray-300 py-2.5 p-2 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter first name"
               required
+              :disabled="loading"
             />
             <p v-if="errors.firstName" class="text-sm text-red-600 mt-1">{{ errors.firstName }}</p>
           </div>
@@ -228,6 +253,7 @@ onMounted(fetchTenant)
               class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter last name"
               required
+              :disabled="loading"
             />
             <p v-if="errors.lastName" class="text-sm text-red-600 mt-1">{{ errors.lastName }}</p>
           </div>
@@ -239,6 +265,7 @@ onMounted(fetchTenant)
               class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter email"
               required
+              :disabled="loading"
             />
             <p v-if="errors.email" class="text-sm text-red-600 mt-1">{{ errors.email }}</p>
           </div>
@@ -250,6 +277,7 @@ onMounted(fetchTenant)
               class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
               placeholder="e.g., +254123456789"
               required
+              :disabled="loading"
             />
             <p v-if="errors.phoneNumber" class="text-sm text-red-600 mt-1">{{ errors.phoneNumber }}</p>
           </div>
@@ -261,60 +289,45 @@ onMounted(fetchTenant)
               class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter ID number"
               required
+              :disabled="loading"
             />
             <p v-if="errors.idNumber" class="text-sm text-red-600 mt-1">{{ errors.idNumber }}</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Apartment</label>
+            <select
+              v-model="apartmentId"
+              @change="updateApartmentDetails"
+              class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              required
+              :disabled="loading"
+            >
+              <option :value="0" disabled>Select apartment</option>
+              <option v-for="apartment in apartments" :key="apartment.id" :value="apartment.id">
+                {{ apartment.house_number }} ({{ apartment.unit_type }})
+              </option>
+            </select>
+            <p v-if="errors.apartmentId" class="text-sm text-red-600 mt-1">{{ errors.apartmentId }}</p>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">House Number</label>
             <input
               v-model="houseNumber"
               type="text"
-              class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              placeholder="e.g., A1, 101"
-              required
+              class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm bg-gray-100"
+              readonly
             />
             <p v-if="errors.houseNumber" class="text-sm text-red-600 mt-1">{{ errors.houseNumber }}</p>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Unit Type</label>
-            <select
+            <input
               v-model="unitType"
-              class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              required
-            >
-              <option :value="null" disabled>Select unit type</option>
-              <option v-for="type in unitTypes" :key="type" :value="type">{{ type }}</option>
-            </select>
+              type="text"
+              class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm bg-gray-100"
+              readonly
+            />
             <p v-if="errors.unitType" class="text-sm text-red-600 mt-1">{{ errors.unitType }}</p>
-          </div>
-        </div>
-
-        <!-- ID Images -->
-        <h2 class="text-xl font-semibold text-gray-900 mb-4">ID Images</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">ID Front Image</label>
-            <input
-              type="file"
-              accept="image/jpeg,image/png"
-              @change="handleFileUpload($event, 'front')"
-              class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            />
-            <p v-if="errors.idFrontImage" class="text-sm text-red-600 mt-1">{{ errors.idFrontImage }}</p>
-            <p v-if="idFrontImage" class="text-sm text-gray-600 mt-1">{{ idFrontImage.name }}</p>
-            <p v-else class="text-sm text-gray-600 mt-1">No new front image selected</p>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">ID Back Image</label>
-            <input
-              type="file"
-              accept="image/jpeg,image/png"
-              @change="handleFileUpload($event, 'back')"
-              class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            />
-            <p v-if="errors.idBackImage" class="text-sm text-red-600 mt-1">{{ errors.idBackImage }}</p>
-            <p v-if="idBackImage" class="text-sm text-gray-600 mt-1">{{ idBackImage.name }}</p>
-            <p v-else class="text-sm text-gray-600 mt-1">No new back image selected</p>
           </div>
         </div>
 
@@ -329,6 +342,7 @@ onMounted(fetchTenant)
               class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter first name"
               required
+              :disabled="loading"
             />
             <p v-if="errors.nextOfKinFirstName" class="text-sm text-red-600 mt-1">{{ errors.nextOfKinFirstName }}</p>
           </div>
@@ -340,6 +354,7 @@ onMounted(fetchTenant)
               class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter last name"
               required
+              :disabled="loading"
             />
             <p v-if="errors.nextOfKinLastName" class="text-sm text-red-600 mt-1">{{ errors.nextOfKinLastName }}</p>
           </div>
@@ -351,6 +366,7 @@ onMounted(fetchTenant)
               class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
               placeholder="e.g., +254123456789"
               required
+              :disabled="loading"
             />
             <p v-if="errors.nextOfKinPhone" class="text-sm text-red-600 mt-1">{{ errors.nextOfKinPhone }}</p>
           </div>
@@ -362,15 +378,16 @@ onMounted(fetchTenant)
             type="button"
             @click="resetForm"
             class="px-4 py-2 bg-gray-300 text-gray-900 rounded-lg hover:bg-gray-400 transition-all duration-300"
+            :disabled="loading"
           >
             Clear
           </button>
           <button
             type="submit"
             class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300"
-            :disabled="Object.keys(errors).length > 0"
+            :disabled="loading || Object.keys(errors).length > 0"
           >
-            Update Tenant
+            {{ loading ? 'Submitting...' : 'Update Tenant' }}
           </button>
         </div>
       </form>
@@ -390,14 +407,56 @@ onMounted(fetchTenant)
           <button
             @click="showConfirmModal = false"
             class="px-4 py-2 bg-gray-300 text-gray-900 rounded-lg hover:bg-gray-400"
+            :disabled="loading"
           >
             Cancel
           </button>
           <button
             @click="confirmSubmit"
             class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            :disabled="loading"
           >
-            Confirm
+            {{ loading ? 'Submitting...' : 'Confirm' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div
+      v-if="showSuccessModal"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-lg p-6 max-w-md w-full animate__animated animate__zoomIn">
+        <h2 class="text-xl font-bold text-green-600 mb-4">Tenant Updated Successfully</h2>
+        <p class="text-gray-600 mb-4">
+          {{ firstName }} {{ lastName }} has been updated in {{ unitType }} {{ houseNumber }}.
+        </p>
+        <div class="flex justify-end">
+          <button
+            @click="closeSuccessModal"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div
+      v-if="showErrorModal"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-lg p-6 max-w-md w-full animate__animated animate__zoomIn">
+        <h2 class="text-xl font-bold text-red-600 mb-4">Failed to Update Tenant</h2>
+        <p class="text-gray-600 mb-4">{{ errorMessage }}</p>
+        <div class="flex justify-end">
+          <button
+            @click="closeErrorModal"
+            class="px-4 py-2 bg-gray-300 text-gray-900 rounded-lg hover:bg-gray-400"
+          >
+            Close
           </button>
         </div>
       </div>

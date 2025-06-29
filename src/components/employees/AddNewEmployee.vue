@@ -8,10 +8,9 @@ const lastName = ref('')
 const email = ref('')
 const phoneNumber = ref('')
 const idNumber = ref('')
-const idFrontImage = ref(null)
-const idBackImage = ref(null)
-const selfiePhoto = ref(null)
 const showConfirmModal = ref(false)
+const submissionStatus = ref(null) // For success/error messages
+const isSubmitting = ref(false) // For loading state
 
 // Form errors
 const errors = ref({})
@@ -40,28 +39,8 @@ const validateForm = () => {
   } else if (!/^\d{6,}$/.test(idNumber.value.trim())) {
     errors.value.idNumber = 'ID number must be at least 6 digits'
   }
-  if (!idFrontImage.value) errors.value.idFrontImage = 'ID front image is required'
-  if (!idBackImage.value) errors.value.idBackImage = 'ID back image is required'
-  if (!selfiePhoto.value) errors.value.selfiePhoto = 'Selfie photo is required'
 
   return Object.keys(errors.value).length === 0
-}
-
-// Handle file uploads
-const handleFileUpload = (event, type) => {
-  const file = event.target.files[0]
-  if (file && ['image/jpeg', 'image/png'].includes(file.type)) {
-    if (type === 'front') {
-      idFrontImage.value = file
-    } else if (type === 'back') {
-      idBackImage.value = file
-    } else if (type === 'selfie') {
-      selfiePhoto.value = file
-    }
-    errors.value[type === 'front' ? 'idFrontImage' : type === 'back' ? 'idBackImage' : 'selfiePhoto'] = ''
-  } else {
-    errors.value[type === 'front' ? 'idFrontImage' : type === 'back' ? 'idBackImage' : 'selfiePhoto'] = 'Please upload a valid JPEG or PNG image'
-  }
 }
 
 // Handle form submission
@@ -71,26 +50,48 @@ const submitForm = () => {
   }
 }
 
-const confirmSubmit = () => {
-  // Placeholder for submission logic
-  const formData = new FormData()
-  formData.append('firstName', firstName.value)
-  formData.append('lastName', lastName.value)
-  formData.append('email', email.value)
-  formData.append('phoneNumber', phoneNumber.value)
-  formData.append('idNumber', idNumber.value)
-  formData.append('idFrontImage', idFrontImage.value)
-  formData.append('idBackImage', idBackImage.value)
-  formData.append('selfiePhoto', selfiePhoto.value)
+const confirmSubmit = async () => {
+  isSubmitting.value = true
+  submissionStatus.value = null
 
-  console.log('Form Data:', Object.fromEntries(formData))
+  // Prepare JSON payload
+  const payload = {
+    firstName: firstName.value,
+    lastName: lastName.value,
+    email: email.value,
+    phoneNumber: phoneNumber.value,
+    idNumber: idNumber.value
+  }
 
-  // Reset form
-  resetForm()
-  showConfirmModal.value = false
+  try {
+    const response = await fetch('http://localhost:8080/api/v1/employees/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
 
-  // Redirect to employees list
-  router.push('/dashboard/employees')
+      },
+      body: JSON.stringify(payload)
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to add employee')
+    }
+
+    submissionStatus.value = { type: 'success', message: 'Employee added successfully!' }
+
+    // Reset form
+    resetForm()
+    showConfirmModal.value = false
+
+    // Redirect to employees list after a short delay to show success message
+    setTimeout(() => {
+      router.push('/dashboard/employees')
+    }, 1500)
+  } catch (error) {
+    submissionStatus.value = { type: 'error', message: error.message || 'An error occurred while adding the employee' }
+  } finally {
+    isSubmitting.value = false
+  }
 }
 
 const resetForm = () => {
@@ -99,10 +100,8 @@ const resetForm = () => {
   email.value = ''
   phoneNumber.value = ''
   idNumber.value = ''
-  idFrontImage.value = null
-  idBackImage.value = null
-  selfiePhoto.value = null
   errors.value = {}
+  submissionStatus.value = null
 }
 </script>
 
@@ -121,6 +120,15 @@ const resetForm = () => {
 
     <!-- Add Employee Form -->
     <div class="bg-white/95 backdrop-blur-sm shadow-2xl rounded-lg p-6 animate__animated animate__fadeInUp animate__delay-1">
+      <!-- Submission Status Messages -->
+      <div v-if="submissionStatus" :class="{
+        'mb-4 p-4 rounded-lg': true,
+        'bg-green-100 text-green-700': submissionStatus.type === 'success',
+        'bg-red-100 text-red-700': submissionStatus.type === 'error'
+      }">
+        {{ submissionStatus.message }}
+      </div>
+
       <form @submit.prevent="submitForm">
         <!-- Employee Details -->
         <h2 class="text-xl font-semibold text-gray-900 mb-4">Employee Details</h2>
@@ -133,6 +141,7 @@ const resetForm = () => {
               class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter first name"
               required
+              :disabled="isSubmitting"
             />
             <p v-if="errors.firstName" class="text-sm text-red-600 mt-1">{{ errors.firstName }}</p>
           </div>
@@ -144,6 +153,7 @@ const resetForm = () => {
               class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter last name"
               required
+              :disabled="isSubmitting"
             />
             <p v-if="errors.lastName" class="text-sm text-red-600 mt-1">{{ errors.lastName }}</p>
           </div>
@@ -155,6 +165,7 @@ const resetForm = () => {
               class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter email"
               required
+              :disabled="isSubmitting"
             />
             <p v-if="errors.email" class="text-sm text-red-600 mt-1">{{ errors.email }}</p>
           </div>
@@ -166,6 +177,7 @@ const resetForm = () => {
               class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
               placeholder="e.g., +254123456789"
               required
+              :disabled="isSubmitting"
             />
             <p v-if="errors.phoneNumber" class="text-sm text-red-600 mt-1">{{ errors.phoneNumber }}</p>
           </div>
@@ -177,49 +189,9 @@ const resetForm = () => {
               class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter ID number"
               required
+              :disabled="isSubmitting"
             />
             <p v-if="errors.idNumber" class="text-sm text-red-600 mt-1">{{ errors.idNumber }}</p>
-          </div>
-        </div>
-
-        <!-- ID and Selfie Images -->
-        <h2 class="text-xl font-semibold text-gray-900 mb-4">ID and Selfie Images</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">ID Front Image</label>
-            <input
-              type="file"
-              accept="image/jpeg,image/png"
-              @change="handleFileUpload($event, 'front')"
-              class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              required
-            />
-            <p v-if="errors.idFrontImage" class="text-sm text-red-600 mt-1">{{ errors.idFrontImage }}</p>
-            <p v-if="idFrontImage" class="text-sm text-gray-600 mt-1">{{ idFrontImage.name }}</p>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">ID Back Image</label>
-            <input
-              type="file"
-              accept="image/jpeg,image/png"
-              @change="handleFileUpload($event, 'back')"
-              class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              required
-            />
-            <p v-if="errors.idBackImage" class="text-sm text-red-600 mt-1">{{ errors.idBackImage }}</p>
-            <p v-if="idBackImage" class="text-sm text-gray-600 mt-1">{{ idBackImage.name }}</p>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Selfie Photo</label>
-            <input
-              type="file"
-              accept="image/jpeg,image/png"
-              @change="handleFileUpload($event, 'selfie')"
-              class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              required
-            />
-            <p v-if="errors.selfiePhoto" class="text-sm text-red-600 mt-1">{{ errors.selfiePhoto }}</p>
-            <p v-if="selfiePhoto" class="text-sm text-gray-600 mt-1">{{ selfiePhoto.name }}</p>
           </div>
         </div>
 
@@ -229,15 +201,17 @@ const resetForm = () => {
             type="button"
             @click="resetForm"
             class="px-4 py-2 bg-gray-300 text-gray-900 rounded-lg hover:bg-gray-400 transition-all duration-300"
+            :disabled="isSubmitting"
           >
             Clear
           </button>
           <button
             type="submit"
             class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300"
-            :disabled="Object.keys(errors).length > 0"
+            :disabled="Object.keys(errors).length > 0 || isSubmitting"
           >
-            Add Employee
+            <span v-if="isSubmitting">Submitting...</span>
+            <span v-else>Add Employee</span>
           </button>
         </div>
       </form>
@@ -257,14 +231,17 @@ const resetForm = () => {
           <button
             @click="showConfirmModal = false"
             class="px-4 py-2 bg-gray-300 text-gray-900 rounded-lg hover:bg-gray-400"
+            :disabled="isSubmitting"
           >
             Cancel
           </button>
           <button
             @click="confirmSubmit"
             class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            :disabled="isSubmitting"
           >
-            Confirm
+            <span v-if="isSubmitting">Submitting...</span>
+            <span v-else>Confirm</span>
           </button>
         </div>
       </div>

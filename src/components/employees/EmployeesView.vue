@@ -1,14 +1,18 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 
-// Dummy employee data
-const employees = ref([
-  { id: 1, name: 'John Kamau', position: 'Caretaker', isActive: true },
-  { id: 2, name: 'Mary Wanjiku', position: 'Cleaner', isActive: true },
-  { id: 3, name: 'Peter Omondi', position: 'Watchman', isActive: true },
-  { id: 4, name: 'Susan Achieng', position: 'Cleaner', isActive: false },
-])
+// State for employees and pagination
+const employees = ref([])
+const pagination = ref({
+  page: 1,
+  limit: 10,
+  total: 0,
+  totalPages: 0,
+})
+const loading = ref(false)
+const error = ref(null)
 
 // State for modals
 const showDeactivateModal = ref(false)
@@ -23,6 +27,45 @@ const payErrors = ref({})
 // Router
 const router = useRouter()
 
+// Fetch employees from backend
+const fetchEmployees = async (page = 1) => {
+  loading.value = true
+  error.value = null
+  try {
+    const response = await axios.get('http://localhost:8080/api/v1/employees', {
+      params: {
+        page,
+        limit: pagination.value.limit,
+      },
+    })
+    employees.value = response.data.data.map(emp => ({
+      ...emp,
+      name: `${emp.first_name} ${emp.last_name}`,
+      position: emp.position || 'N/A', // Default if position isn't in backend model
+      isActive: emp.is_active !== false, // Default to true if not provided
+    }))
+    pagination.value = response.data.meta
+  } catch (err) {
+    error.value = err.response?.data?.error || 'Failed to fetch employees'
+    console.error('Fetch employees error:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Initial fetch
+onMounted(() => {
+  fetchEmployees()
+})
+
+// Change page
+const changePage = (newPage) => {
+  if (newPage >= 1 && newPage <= pagination.value.totalPages) {
+    pagination.value.page = newPage
+    fetchEmployees(newPage)
+  }
+}
+
 // Navigate to add employee page
 const addEmployee = () => {
   router.push('/dashboard/employees/add')
@@ -34,11 +77,17 @@ const deactivateEmployee = (employee) => {
   showDeactivateModal.value = true
 }
 
-const confirmDeactivate = () => {
+const confirmDeactivate = async () => {
   if (selectedEmployee.value) {
-    employees.value = employees.value.map(emp =>
-      emp.id === selectedEmployee.value.id ? { ...emp, isActive: false } : emp
-    )
+    try {
+      await axios.patch(`http://localhost:8080/api/v1/employees/deactivate/${selectedEmployee.value.id}`, { is_active: false })
+      employees.value = employees.value.map(emp =>
+        emp.id === selectedEmployee.value.id ? { ...emp, isActive: false } : emp
+      )
+    } catch (err) {
+      error.value = err.response?.data?.error || 'Failed to deactivate employee'
+      console.error('Deactivate employee error:', err)
+    }
   }
   showDeactivateModal.value = false
   selectedEmployee.value = null
@@ -47,7 +96,7 @@ const confirmDeactivate = () => {
 // Pay employee
 const payEmployee = (employee) => {
   selectedEmployee.value = employee
-  payPhoneNumber.value = '' // Reset form
+  payPhoneNumber.value = employee.phone_number || '' // Pre-fill with employee's phone number
   payAmount.value = ''
   payErrors.value = {}
   showPayModal.value = true
@@ -70,19 +119,22 @@ const validatePayForm = () => {
 }
 
 // Confirm payment
-const confirmPay = () => {
+const confirmPay = async () => {
   if (validatePayForm()) {
-    // Placeholder for payment logic
-    console.log({
-      employee: selectedEmployee.value.name,
-      phoneNumber: payPhoneNumber.value,
-      amount: payAmount.value,
-    })
-    showPayModal.value = false
-    selectedEmployee.value = null
-    payPhoneNumber.value = ''
-    payAmount.value = ''
-    payErrors.value = {}
+    try {
+      await axios.post(`http://localhost:8080/api/v1/employees/${selectedEmployee.value.id}/pay`, {
+        phone_number: payPhoneNumber.value,
+        amount: Number(payAmount.value),
+      })
+      showPayModal.value = false
+      selectedEmployee.value = null
+      payPhoneNumber.value = ''
+      payAmount.value = ''
+      payErrors.value = {}
+    } catch (err) {
+      error.value = err.response?.data?.error || 'Failed to process payment'
+      console.error('Payment error:', err)
+    }
   }
 }
 </script>
@@ -100,8 +152,18 @@ const confirmPay = () => {
       </button>
     </div>
 
+    <!-- Error Message -->
+    <div v-if="error" class="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
+      {{ error }}
+    </div>
+
+    <!-- Loading State -->
+    <div v-if="loading" class="text-center text-gray-600">
+      Loading employees...
+    </div>
+
     <!-- Employees Table -->
-    <div class="bg-white/95 backdrop-blur-sm shadow-2xl rounded-lg overflow-hidden animate__animated animate__fadeInUp animate__delay-1">
+    <div v-else class="bg-white/95 backdrop-blur-sm shadow-2xl rounded-lg overflow-hidden animate__animated animate__fadeInUp animate__delay-1">
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
@@ -138,6 +200,32 @@ const confirmPay = () => {
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- Pagination -->
+    <div v-if="pagination.total > 0" class="mt-4 flex justify-between items-center">
+      <div class="text-sm text-gray-600">
+        Showing {{ (pagination.page - 1) * pagination.limit + 1 }} to
+        {{ Math.min(pagination.page * pagination.limit, pagination.total) }} of {{ pagination.total }} employees
+      </div>
+      <div class="space-x-2">
+        <button
+          :disabled="pagination.page === 1"
+          @click="changePage(pagination.page - 1)"
+          class="px-3 py-1 bg-gray-200 rounded-lg"
+          :class="{ 'opacity-50 cursor-not-allowed': pagination.page === 1 }"
+        >
+          Previous
+        </button>
+        <button
+          :disabled="pagination.page === pagination.totalPages"
+          @click="changePage(pagination.page + 1)"
+          class="px-3 py-1 bg-gray-200 rounded-lg"
+          :class="{ 'opacity-50 cursor-not-allowed': pagination.page === pagination.totalPages }"
+        >
+          Next
+        </button>
+      </div>
     </div>
 
     <!-- Deactivate Employee Modal -->

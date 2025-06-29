@@ -37,7 +37,7 @@ const HandleLogin = async () => {
   }
 
   try {
-    const response = await axios.post('http://localhost:3000/api/auth/login', loginData)
+    const response = await axios.post('http://127.0.0.1:8080/api/v1/auth/login', loginData)
     const { token, user } = response.data
 
     localStorage.setItem('authToken', token, user)

@@ -1,6 +1,6 @@
 <script setup>
 import { RouterLink } from 'vue-router'
-import teamImage from '../assets/teamImage.png'
+import teamImage from '../../assets/teamImage.png'
 </script>
 
 <template>

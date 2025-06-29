@@ -1,28 +1,29 @@
 import { createWebHistory, createRouter } from 'vue-router'
-import DefaultLayout from '../layout/DefaultLayout.vue'
-import HomepageView from '../views/HomepageView.vue'
-import NotFoundPage from '../views/NotFoundPage.vue'
-import LoginView from '../views/Auth/LoginView.vue'
-import RegisterView from '../views/Auth/RegisterView.vue'
-import AboutUs from '../views/AboutUs.vue'
-import ContactView from '../views/ContactView.vue'
-import HowItWorks from '../views/HowItWorks.vue'
-import DashboardView from '../components/dashboard/DashboardView.vue'
+import HomepageView from '../views/common/HomepageView.vue'
+import LoginView from '@/views/Auth/LoginView.vue'
+import DefaultLayout from '@/components/layout/DefaultLayout.vue'
+import AboutUs from '@/views/common/AboutUs.vue'
+import RegisterView from '@/views/Auth/RegisterView.vue'
+import ContactView from '@/views/common/ContactView.vue'
+import HowItWorks from '@/views/common/HowItWorks.vue'
+import DashboardView from '@/components/dashboard/DashboardView.vue'
+import NotFoundPage from '@/views/common/NotFoundPage.vue'
 // Import views for sidebar routes
-import MessagesView from '../views/MessagesView.vue'
-import ReportsView from '../views/ReportsView.vue'
-import SentMessagesView from '../views/SentMessagesView.vue'
-import ViewTenants from '@/views/ViewTenants.vue'
-import HousesFlatsView from '../views/HousesFlatsView.vue'
-import WaterBillsView from '../views/WaterBillsView.vue'
-import EmployeesView from '../views/EmployeesView.vue'
-import AddNewEmployee from "../views/AddNewEmployee.vue"
-import PaymentReceivedView from '../views/PaymentReceivedView.vue'
-import PaymentAllocationsView from '../views/PaymentAllocationsView.vue'
-import MainAccountView from '../views/MainAccountView.vue'
-import InvoicesView from '../views/InvoicesView.vue'
-import AddNewTenant from '../views/AddNewTenant.vue'
-import EditTenants from '../views/EditTenants.vue'
+import MessagesView from '@/components/messages/MessagesView.vue'
+import ReportsView from '@/components/reports/ReportsView.vue'
+import SentMessagesView from '@/components/messages/SentMessagesView.vue'
+import AddNewTenant from '@/components/tenants/AddNewTenant.vue'
+import EditTenants from '@/components/tenants/EditTenants.vue'
+import ViewTenants from '@/components/tenants/ViewTenants.vue'
+import HousesFlatsView from '@/components/properties/HousesFlatsView.vue'
+import WaterBillsView from '@/components/bills/WaterBillsView.vue'
+import EmployeesView from '@/components/employees/EmployeesView.vue'
+import AddNewEmployee from '@/components/employees/AddNewEmployee.vue'
+import AddPayment from '@/components/payments/AddPayment.vue'
+import InvoicesView from '@/components/invoices/InvoicesView.vue'
+import AddApartment from '@/components/properties/AddApartment.vue'
+import PaymentReceivedView from '@/components/payments/PaymentReceivedView.vue'
+import AddInvoice from '@/components/invoices/AddInvoice.vue'
 
 const routes = [
   // Public Routes (No Sidebar, Navbar visible)
@@ -134,21 +135,33 @@ const routes = [
         meta: { requiresAuth: true },
       },
       {
-        path: 'dashboard/payment-allocations',
-        name: 'PaymentAllocations',
-        component: PaymentAllocationsView,
-        meta: { requiresAuth: true },
-      },
-      {
-        path: 'dashboard/main-account',
-        name: 'MainAccount',
-        component: MainAccountView,
+        path: 'dashboard/payments/add',
+        name: 'AddPayment',
+        component: AddPayment,
         meta: { requiresAuth: true },
       },
       {
         path: 'dashboard/invoices',
         name: 'Invoices',
         component: InvoicesView,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'dashboard/invoices/add',
+        name: 'Add Invoices',
+        component: AddInvoice,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: '/dashboard/invoices/:id',
+        name: 'InvoiceDetails',
+        component: () => import('@/components/invoices/InvoiceDetails.vue'),
+      },
+
+      {
+        path: '/dashboard/houses/add',
+        name: 'Add Houses',
+        component: AddApartment,
         meta: { requiresAuth: true },
       },
     ],
@@ -167,17 +180,13 @@ const router = createRouter({
 })
 
 // Navigation Guard for Authentication
-// router.beforeEach((to, from, next) => {
-//   const isAuthenticated = !!localStorage.getItem('authToken') // Basic auth check
-//   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
-
-//   if (requiresAuth && !isAuthenticated) {
-//     next({ name: 'Login', query: { redirect: to.fullPath } }) // Redirect to login if not authenticated
-//   } else if (isAuthenticated && (to.name === 'Login' || to.name === 'Sign Up')) {
-//     next({ name: 'Dashboard' }) // Redirect authenticated users away from login/signup
-//   } else {
-//     next() // Proceed as normal
-//   }
-// })
+router.beforeEach((to, from, next) => {
+  const isauthenticated = localStorage.getItem('authToken')
+  if (to.meta.requiresAuth && !isauthenticated) {
+    next('/login')
+  } else {
+    next()
+  }
+})
 
 export default router

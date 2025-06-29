@@ -1,43 +1,69 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
+import { useToast } from 'vue-toastification'
 
-const tenants = ref([
-  {
-    id: 1,
-    firstName: 'John',
-    lastName: 'Kamau',
-    email: 'john.kamau@example.com',
-    phoneNumber: '+254123456789',
-    idNumber: '12345678',
-    houseNumber: 'A1',
-    unitType: 'One Bedroom',
-    nextOfKinFirstName: 'Jane',
-    nextOfKinLastName: 'Doe',
-    nextOfKinPhone: '+254987654321',
-  },
-  {
-    id: 2,
-    firstName: 'Mary',
-    lastName: 'Wanjiku',
-    email: 'mary.wanjiku@example.com',
-    phoneNumber: '+254234567890',
-    idNumber: '87654321',
-    houseNumber: 'B2',
-    unitType: 'Bedsitter',
-    nextOfKinFirstName: 'Peter',
-    nextOfKinLastName: 'Omondi',
-    nextOfKinPhone: '+254876543210',
-  },
-])
+// State for tenants and pagination
+const tenants = ref([])
+const pagination = ref({
+  page: 1,
+  limit: 10,
+  total: 0,
+  totalPages: 0,
+})
+const loading = ref(false)
+const error = ref(null)
 
 // State for modals
 const showVacateModal = ref(false)
 const showDetailsModal = ref(false)
 const selectedTenant = ref(null)
 
-// Router
+// Router and Toast
 const router = useRouter()
+const toast = useToast()
+
+// Fetch tenants from backend
+const fetchTenants = async (page = 1) => {
+  loading.value = true
+  error.value = null
+  try {
+    const response = await axios.get('http://localhost:8080/api/v1/tenants', {
+      params: {
+        page,
+        limit: pagination.value.limit,
+      },
+    })
+    tenants.value = response.data.data.map(tenant => ({
+      ...tenant,
+      firstName: tenant.first_name,
+      lastName: tenant.last_name,
+      phoneNumber: tenant.phone_number,
+      idNumber: tenant.id_number,
+      houseNumber: tenant.house_number,
+      unitType: tenant.unit_type,
+      nextOfKinFirstName: tenant.next_of_kin_first_name,
+      nextOfKinLastName: tenant.next_of_kin_last_name,
+      nextOfKinPhone: tenant.next_of_kin_phone,
+    }))
+    pagination.value = response.data.meta
+  } catch (err) {
+    error.value = err.response?.data?.error || 'Failed to fetch tenants'
+    console.error('Fetch tenants error:', err)
+    toast.error(error.value)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Change page
+const changePage = (newPage) => {
+  if (newPage >= 1 && newPage <= pagination.value.totalPages) {
+    pagination.value.page = newPage
+    fetchTenants(newPage)
+  }
+}
 
 // Navigate to edit page
 const editTenant = (tenantId) => {
@@ -57,11 +83,23 @@ const openDetailsModal = (tenant) => {
 }
 
 // Confirm vacate action
-const confirmVacate = () => {
-  console.log(`Vacating tenant: ${selectedTenant.value.firstName} ${selectedTenant.value.lastName}`)
-  tenants.value = tenants.value.filter((tenant) => tenant.id !== selectedTenant.value.id)
-
-  // Reset modal state
+const confirmVacate = async () => {
+  if (selectedTenant.value) {
+    try {
+      await axios.patch(`http://localhost:8080/api/v1/tenants/${selectedTenant.value.id}`, {
+        is_active: false,
+      })
+      tenants.value = tenants.value.filter((tenant) => tenant.id !== selectedTenant.value.id)
+      toast.success(`Tenant ${selectedTenant.value.firstName} ${selectedTenant.value.lastName} vacated successfully`)
+    } catch (err) {
+      error.value = err.response?.data?.error || 'Failed to vacate tenant'
+      if (err.response?.data?.details) {
+        error.value += ` (${err.response.data.details})`
+      }
+      console.error('Vacate tenant error:', err)
+      toast.error(error.value)
+    }
+  }
   showVacateModal.value = false
   selectedTenant.value = null
 }
@@ -70,6 +108,11 @@ const confirmVacate = () => {
 const addTenant = () => {
   router.push('/dashboard/add-tenants')
 }
+
+// Initial fetch
+onMounted(() => {
+  fetchTenants()
+})
 </script>
 
 <template>
@@ -87,10 +130,20 @@ const addTenant = () => {
       </div>
     </div>
 
+    <!-- Error Message -->
+    <div v-if="error" class="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
+      {{ error }}
+    </div>
+
+    <!-- Loading State -->
+    <div v-if="loading" class="text-center text-gray-600">
+      Loading tenants...
+    </div>
+
     <!-- Tenants Table -->
-    <div class="bg-white/95 backdrop-blur-sm shadow-2xl rounded-lg overflow-hidden animate__animated animate__fadeInUp">
+    <div v-else class="bg-white/95 backdrop-blur-sm shadow-2xl rounded-lg overflow-hidden animate__animated animate__fadeInUp">
       <h2 class="text-xl font-semibold text-gray-900 p-4">
-        Tenants ({{ tenants.length }})
+        Tenants ({{ pagination.total }})
       </h2>
       <div v-if="tenants.length" class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
@@ -129,6 +182,7 @@ const addTenant = () => {
                   Edit
                 </button>
                 <button
+                  v-if="tenant.is_active"
                   @click="openVacateModal(tenant)"
                   class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-300"
                 >
@@ -141,6 +195,32 @@ const addTenant = () => {
       </div>
       <div v-else class="p-6 text-center text-gray-500">
         No tenants found.
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div v-if="pagination.total > 0" class="mt-4 flex justify-between items-center">
+      <div class="text-sm text-gray-600">
+        Showing {{ (pagination.page - 1) * pagination.limit + 1 }} to
+        {{ Math.min(pagination.page * pagination.limit, pagination.total) }} of {{ pagination.total }} tenants
+      </div>
+      <div class="space-x-2">
+        <button
+          :disabled="pagination.page === 1 || loading"
+          @click="changePage(pagination.page - 1)"
+          class="px-3 py-1 bg-gray-200 rounded-lg"
+          :class="{ 'opacity-50 cursor-not-allowed': pagination.page === 1 || loading }"
+        >
+          Previous
+        </button>
+        <button
+          :disabled="pagination.page === pagination.totalPages || loading"
+          @click="changePage(pagination.page + 1)"
+          class="px-3 py-1 bg-gray-200 rounded-lg"
+          :class="{ 'opacity-50 cursor-not-allowed': pagination.page === pagination.totalPages || loading }"
+        >
+          Next
+        </button>
       </div>
     </div>
 
@@ -159,6 +239,7 @@ const addTenant = () => {
           <p><strong>House Number:</strong> {{ selectedTenant?.houseNumber }}</p>
           <p><strong>Unit Type:</strong> {{ selectedTenant?.unitType }}</p>
           <p><strong>Next of Kin:</strong> {{ selectedTenant?.nextOfKinFirstName }} {{ selectedTenant?.nextOfKinLastName }} ({{ selectedTenant?.nextOfKinPhone }})</p>
+          <p><strong>Status:</strong> {{ selectedTenant?.is_active ? 'Active' : 'Inactive' }}</p>
         </div>
         <div class="flex justify-end mt-6">
           <button

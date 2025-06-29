@@ -1,7 +1,7 @@
 <script setup>
-import SideBar from '../components/SideBar.vue'
 import { useRoute } from 'vue-router'
 import { computed } from 'vue'
+import SideBar from '../shared/SideBar.vue'
 
 const route = useRoute()
 const isDashboardRoute = computed(() => route.path.startsWith('/dashboard'))
