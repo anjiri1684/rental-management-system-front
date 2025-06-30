@@ -13,7 +13,6 @@ import MessagesView from '@/components/messages/MessagesView.vue'
 import ReportsView from '@/components/reports/ReportsView.vue'
 import SentMessagesView from '@/components/messages/SentMessagesView.vue'
 import AddNewTenant from '@/components/tenants/AddNewTenant.vue'
-import EditTenants from '@/components/tenants/EditTenants.vue'
 import ViewTenants from '@/components/tenants/ViewTenants.vue'
 import HousesFlatsView from '@/components/properties/HousesFlatsView.vue'
 import WaterBillsView from '@/components/bills/WaterBillsView.vue'
@@ -24,6 +23,10 @@ import InvoicesView from '@/components/invoices/InvoicesView.vue'
 import AddApartment from '@/components/properties/AddApartment.vue'
 import PaymentReceivedView from '@/components/payments/PaymentReceivedView.vue'
 import AddInvoice from '@/components/invoices/AddInvoice.vue'
+import MessageDetails from '@/components/messages/MessageDetails.vue'
+import PaymentDetails from '@/components/payments/PaymentDetails.vue'
+import TenantDetails from '@/components/tenants/TenantDetails.vue'
+import EditTenant from '@/components/tenants/EditTenant.vue'
 
 const routes = [
   // Public Routes (No Sidebar, Navbar visible)
@@ -87,6 +90,12 @@ const routes = [
         meta: { requiresAuth: true },
       },
       {
+        path: 'dashboard/sent-messages/:id',
+        name: 'MessageDetails',
+        component: MessageDetails,
+        meta: { requiresAuth: true },
+      },
+      {
         path: 'dashboard/add-tenants',
         name: 'Add Tenants',
         component: AddNewTenant,
@@ -95,13 +104,19 @@ const routes = [
       {
         path: 'dashboard/tenants/edit/:id',
         name: 'edit Tenant',
-        component: EditTenants,
+        component: EditTenant,
         meta: { requiresAuth: true },
       },
       {
         path: 'dashboard/view-tenants',
         name: 'Tenants',
         component: ViewTenants,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'dashboard/tenants/:id',
+        name: 'Tenants Details',
+        component: TenantDetails,
         meta: { requiresAuth: true },
       },
       {
@@ -138,6 +153,12 @@ const routes = [
         path: 'dashboard/payments/add',
         name: 'AddPayment',
         component: AddPayment,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'dashboard/payments/:id',
+        name: 'payment details',
+        component: PaymentDetails,
         meta: { requiresAuth: true },
       },
       {

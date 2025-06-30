@@ -162,7 +162,7 @@ const confirmSubmit = async () => {
 const closeSuccessModal = () => {
     showSuccessModal.value = false
     resetForm()
-    router.push('/dashboard/tenants')
+    router.push('/dashboard')
 }
 
 // Close error modal

@@ -1,24 +1,38 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted }
+from 'vue'
+import {
+  useRouter
+}
+from 'vue-router'
 import axios from 'axios'
-import { useToast } from 'vue-toastification'
+import {
+  useToast
+}
+from 'vue-toastification'
+import {
+  User,
+  Mail,
+  Phone,
+  Hash,
+  Home,
+  Layers,
+  Eye,
+  Edit,
+  PlusCircle
+}
+from 'lucide-vue-next'
 
 // State for tenants and pagination
 const tenants = ref([])
 const pagination = ref({
   page: 1,
-  limit: 10,
+  limit: 5, // Consistent with Payments.vue
   total: 0,
   totalPages: 0,
 })
 const loading = ref(false)
 const error = ref(null)
-
-// State for modals
-const showVacateModal = ref(false)
-const showDetailsModal = ref(false)
-const selectedTenant = ref(null)
 
 // Router and Toast
 const router = useRouter()
@@ -48,6 +62,7 @@ const fetchTenants = async (page = 1) => {
       nextOfKinPhone: tenant.next_of_kin_phone,
     }))
     pagination.value = response.data.meta
+    pagination.value.totalPages = Math.ceil(pagination.value.total / pagination.value.limit)
   } catch (err) {
     error.value = err.response?.data?.error || 'Failed to fetch tenants'
     console.error('Fetch tenants error:', err)
@@ -65,43 +80,9 @@ const changePage = (newPage) => {
   }
 }
 
-// Navigate to edit page
-const editTenant = (tenantId) => {
-  router.push(`/dashboard/tenants/edit/${tenantId}`)
-}
-
-// Open vacate confirmation modal
-const openVacateModal = (tenant) => {
-  selectedTenant.value = tenant
-  showVacateModal.value = true
-}
-
-// Open details modal
-const openDetailsModal = (tenant) => {
-  selectedTenant.value = tenant
-  showDetailsModal.value = true
-}
-
-// Confirm vacate action
-const confirmVacate = async () => {
-  if (selectedTenant.value) {
-    try {
-      await axios.patch(`http://localhost:8080/api/v1/tenants/${selectedTenant.value.id}`, {
-        is_active: false,
-      })
-      tenants.value = tenants.value.filter((tenant) => tenant.id !== selectedTenant.value.id)
-      toast.success(`Tenant ${selectedTenant.value.firstName} ${selectedTenant.value.lastName} vacated successfully`)
-    } catch (err) {
-      error.value = err.response?.data?.error || 'Failed to vacate tenant'
-      if (err.response?.data?.details) {
-        error.value += ` (${err.response.data.details})`
-      }
-      console.error('Vacate tenant error:', err)
-      toast.error(error.value)
-    }
-  }
-  showVacateModal.value = false
-  selectedTenant.value = null
+// Navigate to tenant details
+const viewTenantDetails = (tenantId) => {
+  router.push(`/dashboard/tenants/${tenantId}`)
 }
 
 // Navigate to add tenant page
@@ -116,164 +97,135 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="p-6">
-    <!-- Header -->
-    <div class="flex justify-between items-center mb-6 animate__animated animate__fadeInDown">
-      <h1 class="text-3xl font-bold text-gray-900">View Tenants</h1>
-      <div class="flex space-x-4">
-        <button
-          @click="addTenant"
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-all duration-300"
-        >
-          Add Tenant
-        </button>
+  <div class="min-h-screen bg-gray-50 p-4 sm:p-6 md:p-8">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 animate__animated animate__fadeIn">
+      <h1 class="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight mb-4 md:mb-0">Tenant Management</h1>
+      <button @click="addTenant"
+        class="px-5 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 hover:scale-105 focus:ring-4 focus:ring-blue-200 transition-all duration-300 text-sm font-medium flex items-center gap-2 shadow-lg">
+        <PlusCircle class="w-4 h-4" />
+        Add New Tenant
+      </button>
+    </div>
+
+    <div v-if="error"
+      class="mb-6 p-4 bg-red-100 text-red-700 rounded-lg flex items-center gap-3 animate__animated animate__bounceIn border border-red-200">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <div>
+        <p class="font-semibold">Error:</p>
+        <p>{{ error }}</p>
       </div>
     </div>
 
-    <!-- Error Message -->
-    <div v-if="error" class="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
-      {{ error }}
-    </div>
+    <div
+      class="bg-white/95 backdrop-blur-sm rounded-xl shadow-xl p-4 sm:p-6 animate__animated animate__fadeIn animate__delay-1s border border-gray-100">
+      <div class="bg-gradient-to-r from-blue-600 to-blue-400 rounded-lg p-4 text-white mb-6 shadow-md">
+        <h2 class="text-xl font-semibold">All Tenants ({{ pagination.total }})</h2>
+        <p class="text-sm opacity-90">Overview of all registered tenant information.</p>
+      </div>
 
-    <!-- Loading State -->
-    <div v-if="loading" class="text-center text-gray-600">
-      Loading tenants...
-    </div>
+      <div v-if="loading" class="flex items-center justify-center h-64">
+        <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
 
-    <!-- Tenants Table -->
-    <div v-else class="bg-white/95 backdrop-blur-sm shadow-2xl rounded-lg overflow-hidden animate__animated animate__fadeInUp">
-      <h2 class="text-xl font-semibold text-gray-900 p-4">
-        Tenants ({{ pagination.total }})
-      </h2>
-      <div v-if="tenants.length" class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+      <div v-else-if="tenants.length" class="overflow-x-auto">
+        <table class="min-w-full text-left bg-white rounded-lg">
+          <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID Number</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">House</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Type</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th class="py-3 px-4 font-semibold text-sm text-gray-700 uppercase tracking-wider">
+                <div class="flex items-center gap-2"><User class="w-4 h-4" /> Name</div>
+              </th>
+              <th class="py-3 px-4 font-semibold text-sm text-gray-700 uppercase tracking-wider">
+                <div class="flex items-center gap-2"><Mail class="w-4 h-4" /> Email</div>
+              </th>
+              <th class="py-3 px-4 font-semibold text-sm text-gray-700 uppercase tracking-wider">
+                <div class="flex items-center gap-2"><Phone class="w-4 h-4" /> Phone</div>
+              </th>
+              <th class="py-3 px-4 font-semibold text-sm text-gray-700 uppercase tracking-wider">
+                <div class="flex items-center gap-2"><Hash class="w-4 h-4" /> ID Number</div>
+              </th>
+              <th class="py-3 px-4 font-semibold text-sm text-gray-700 uppercase tracking-wider">
+                <div class="flex items-center gap-2"><Home class="w-4 h-4" /> House</div>
+              </th>
+              <th class="py-3 px-4 font-semibold text-sm text-gray-700 uppercase tracking-wider">
+                <div class="flex items-center gap-2"><Layers class="w-4 h-4" /> Unit Type</div>
+              </th>
+              <th class="py-3 px-4 font-semibold text-sm text-gray-700 uppercase tracking-wider">
+                <div class="flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Status
+                </div>
+              </th>
+              <th class="py-3 px-4 font-semibold text-sm text-gray-700 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="tenant in tenants" :key="tenant.id">
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ tenant.firstName }} {{ tenant.lastName }}
+          <tbody>
+            <tr v-for="tenant in tenants" :key="tenant.id"
+              class="border-b border-gray-100 hover:bg-blue-50 transition-colors duration-200 cursor-pointer"
+              @click="viewTenantDetails(tenant.id)">
+              <td class="py-3 px-4 text-gray-800">{{ tenant.firstName }} {{ tenant.lastName }}</td>
+              <td class="py-3 px-4 text-gray-800">{{ tenant.email }}</td>
+              <td class="py-3 px-4 text-gray-800">{{ tenant.phoneNumber }}</td>
+              <td class="py-3 px-4 text-gray-800">{{ tenant.idNumber }}</td>
+              <td class="py-3 px-4 text-gray-800">{{ tenant.houseNumber }}</td>
+              <td class="py-3 px-4 text-gray-800">{{ tenant.unitType }}</td>
+              <td class="py-3 px-4">
+                <span :class="{
+                    'bg-green-100 text-green-700 border border-green-200': tenant.is_active,
+                    'bg-red-100 text-red-700 border border-red-200': !tenant.is_active
+                  }" class="px-3 py-1 rounded-full text-xs font-medium shadow-sm">
+                  {{ tenant.is_active ? 'Active' : 'Inactive' }}
+                </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ tenant.email }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ tenant.phoneNumber }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ tenant.idNumber }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ tenant.houseNumber }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ tenant.unitType }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                <button
-                  @click="openDetailsModal(tenant)"
-                  class="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-300 mr-2"
-                >
-                  View Details
+              <td class="py-3 px-4 flex flex-wrap gap-2">
+                <button @click.stop="viewTenantDetails(tenant.id)"
+                  class="px-3 py-1 bg-green-600 text-white rounded-full hover:bg-green-700 hover:scale-105 focus:ring-4 focus:ring-green-200 transition-all duration-300 text-xs font-medium flex items-center gap-1 shadow-md">
+                  <Eye class="w-3 h-3" /> Details
                 </button>
-                <button
-                  @click="editTenant(tenant.id)"
-                  class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300 mr-2"
-                >
-                  Edit
-                </button>
-                <button
-                  v-if="tenant.is_active"
-                  @click="openVacateModal(tenant)"
-                  class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-300"
-                >
-                  Vacate
+                <button @click.stop="router.push(`/dashboard/tenants/edit/${tenant.id}`)"
+                  class="px-3 py-1 bg-blue-600 text-white rounded-full hover:bg-blue-700 hover:scale-105 focus:ring-4 focus:ring-blue-200 transition-all duration-300 text-xs font-medium flex items-center gap-1 shadow-md">
+                  <Edit class="w-3 h-3" /> Edit
                 </button>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-      <div v-else class="p-6 text-center text-gray-500">
-        No tenants found.
+      <div v-else class="p-6 text-center text-gray-500 text-lg">
+        <p class="mb-2">No tenants found.</p>
+        <p class="text-sm">Click "Add New Tenant" to get started.</p>
       </div>
-    </div>
 
-    <!-- Pagination -->
-    <div v-if="pagination.total > 0" class="mt-4 flex justify-between items-center">
-      <div class="text-sm text-gray-600">
-        Showing {{ (pagination.page - 1) * pagination.limit + 1 }} to
-        {{ Math.min(pagination.page * pagination.limit, pagination.total) }} of {{ pagination.total }} tenants
-      </div>
-      <div class="space-x-2">
-        <button
-          :disabled="pagination.page === 1 || loading"
-          @click="changePage(pagination.page - 1)"
-          class="px-3 py-1 bg-gray-200 rounded-lg"
-          :class="{ 'opacity-50 cursor-not-allowed': pagination.page === 1 || loading }"
-        >
-          Previous
-        </button>
-        <button
-          :disabled="pagination.page === pagination.totalPages || loading"
-          @click="changePage(pagination.page + 1)"
-          class="px-3 py-1 bg-gray-200 rounded-lg"
-          :class="{ 'opacity-50 cursor-not-allowed': pagination.page === pagination.totalPages || loading }"
-        >
-          Next
-        </button>
-      </div>
-    </div>
-
-    <!-- Details Modal -->
-    <div
-      v-if="showDetailsModal"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-    >
-      <div class="bg-white rounded-lg p-6 max-w-lg w-full animate__animated animate__zoomIn">
-        <h2 class="text-xl font-bold text-gray-900 mb-4">Tenant Details</h2>
-        <div class="space-y-4 text-gray-600">
-          <p><strong>Name:</strong> {{ selectedTenant?.firstName }} {{ selectedTenant?.lastName }}</p>
-          <p><strong>Email:</strong> {{ selectedTenant?.email }}</p>
-          <p><strong>Phone Number:</strong> {{ selectedTenant?.phoneNumber }}</p>
-          <p><strong>ID Number:</strong> {{ selectedTenant?.idNumber }}</p>
-          <p><strong>House Number:</strong> {{ selectedTenant?.houseNumber }}</p>
-          <p><strong>Unit Type:</strong> {{ selectedTenant?.unitType }}</p>
-          <p><strong>Next of Kin:</strong> {{ selectedTenant?.nextOfKinFirstName }} {{ selectedTenant?.nextOfKinLastName }} ({{ selectedTenant?.nextOfKinPhone }})</p>
-          <p><strong>Status:</strong> {{ selectedTenant?.is_active ? 'Active' : 'Inactive' }}</p>
+      <div v-if="pagination.total > 0"
+        class="flex flex-col sm:flex-row justify-between items-center mt-6 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div class="text-sm text-gray-700">
+          Showing <span class="font-semibold">{{ (pagination.page - 1) * pagination.limit + 1 }}</span> to
+          <span class="font-semibold">{{ Math.min(pagination.page * pagination.limit, pagination.total) }}</span> of
+          <span class="font-semibold">{{ pagination.total }}</span> tenants
         </div>
-        <div class="flex justify-end mt-6">
-          <button
-            @click="showDetailsModal = false"
-            class="px-4 py-2 bg-gray-300 text-gray-900 rounded-lg hover:bg-gray-400"
-          >
-            Close
+        <div class="flex flex-wrap justify-center gap-2 items-center">
+          <button @click="changePage(pagination.page - 1)" :disabled="pagination.page === 1 || loading"
+            class="px-4 py-2 bg-gray-200 text-gray-800 rounded-full hover:bg-gray-300 hover:scale-105 focus:ring-4 focus:ring-gray-300 transition-all duration-300 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+            Previous
           </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Vacate Confirmation Modal -->
-    <div
-      v-if="showVacateModal"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-    >
-      <div class="bg-white rounded-lg p-6 max-w-md w-full animate__animated animate__zoomIn">
-        <h2 class="text-xl font-bold text-gray-900 mb-4">Confirm Vacate</h2>
-        <p class="text-gray-600 mb-4">
-          Are you sure you want to vacate {{ selectedTenant?.firstName }} {{ selectedTenant?.lastName }} from {{ selectedTenant?.unitType }} {{ selectedTenant?.houseNumber }}?
-        </p>
-        <div class="flex justify-end space-x-4">
-          <button
-            @click="showVacateModal = false"
-            class="px-4 py-2 bg-gray-300 text-gray-900 rounded-lg hover:bg-gray-400"
-          >
-            Cancel
-          </button>
-          <button
-            @click="confirmVacate"
-            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-          >
-            Vacate
+          <div class="flex gap-1">
+            <button v-for="p in pagination.totalPages" :key="p" @click="changePage(p)" :class="{
+                'px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 shadow-sm': true,
+                'bg-blue-600 text-white hover:bg-blue-700': p === pagination.page,
+                'bg-gray-200 text-gray-800 hover:bg-gray-300': p !== pagination.page
+              }">
+              {{ p }}
+            </button>
+          </div>
+          <button @click="changePage(pagination.page + 1)"
+            :disabled="pagination.page === pagination.totalPages || loading"
+            class="px-4 py-2 bg-gray-200 text-gray-800 rounded-full hover:bg-gray-300 hover:scale-105 focus:ring-4 focus:ring-gray-300 transition-all duration-300 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+            Next
           </button>
         </div>
       </div>
@@ -283,5 +235,201 @@ onMounted(() => {
 
 <style scoped>
 @import 'animate.css';
-.animate__delay-1 { animation-delay: 0.2s; }
+
+/* Animation durations */
+.animate__fadeIn {
+  animation-duration: 0.6s;
+}
+
+.animate__delay-1s {
+  animation-delay: 0.2s;
+}
+
+.animate__bounceIn {
+  animation-duration: 0.6s;
+}
+
+/* Smooth scrollbar for table overflow */
+::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  /* Tailwind gray-300 */
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f8f8f8;
+  /* Lighter track */
+  border-radius: 9999px;
+}
+
+/* Table row hover effect */
+tbody tr:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* General card hover effect */
+.bg-white\/95:hover {
+  box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.08), 0 5px 10px -2px rgba(0, 0, 0, 0.03);
+}
+
+/* Focus ring for accessibility */
+*:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
+  /* Tailwind blue-500 with opacity */
+}
+
+/* Responsive adjustments */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  white-space: nowrap;
+  /* Prevent text wrapping in table cells */
+}
+
+@media (max-width: 640px) {
+
+  .p-4 {
+    padding: 1rem;
+  }
+
+  .sm:p-6 {
+    padding: 1.5rem;
+  }
+
+  .md:p-8 {
+    padding: 2rem;
+  }
+
+  .text-2xl {
+    font-size: 1.5rem;
+  }
+
+  .md\:text-3xl {
+    font-size: 1.875rem;
+  }
+
+  .mb-4 {
+    margin-bottom: 1rem;
+  }
+
+  .md\:mb-0 {
+    margin-bottom: 0;
+  }
+
+  .flex-col {
+    flex-direction: column;
+  }
+
+  .md\:flex-row {
+    flex-direction: row;
+  }
+
+  .items-start {
+    align-items: flex-start;
+  }
+
+  .md\:items-center {
+    align-items: center;
+  }
+
+  .justify-between {
+    justify-content: space-between;
+  }
+
+  .gap-3 {
+    gap: 0.75rem;
+  }
+
+  /* Table specific adjustments for small screens */
+  table,
+  thead,
+  tbody,
+  th,
+  td,
+  tr {
+    display: block;
+  }
+
+  thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+
+  tr {
+    border: 1px solid #eee;
+    margin-bottom: 0.625rem;
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+
+  td {
+    border: none;
+    border-bottom: 1px solid #eee;
+    position: relative;
+    padding-left: 50%;
+    text-align: right;
+  }
+
+  td:last-child {
+    border-bottom: 0;
+  }
+
+  td:before {
+    position: absolute;
+    top: 0;
+    left: 6px;
+    width: 45%;
+    padding-right: 10px;
+    white-space: nowrap;
+    text-align: left;
+    font-weight: 600;
+    color: #4b5563;
+    /* Tailwind gray-700 */
+  }
+
+  /* Labeling for small screen table cells */
+  td:nth-of-type(1):before {
+    content: "Name:";
+  }
+
+  td:nth-of-type(2):before {
+    content: "Email:";
+  }
+
+  td:nth-of-type(3):before {
+    content: "Phone:";
+  }
+
+  td:nth-of-type(4):before {
+    content: "ID Number:";
+  }
+
+  td:nth-of-type(5):before {
+    content: "House:";
+  }
+
+  td:nth-of-type(6):before {
+    content: "Unit Type:";
+  }
+
+  td:nth-of-type(7):before {
+    content: "Status:";
+  }
+
+  td:nth-of-type(8):before {
+    content: "Actions:";
+  }
+}
 </style>

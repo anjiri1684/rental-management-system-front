@@ -20,9 +20,8 @@ const showErrorModal = ref(false)
 const errorMessage = ref('')
 const errors = ref({})
 const successMessage = ref('')
-const sentMessage = ref('') // New: To display the sent message
-const messageStatus = ref('') // New: To display message status
-
+const sentMessage = ref('')
+const messageStatus = ref('')
 const router = useRouter()
 const toast = useToast()
 
@@ -124,7 +123,7 @@ const confirmSubmit = async () => {
 const closeSuccessModal = () => {
     showSuccessModal.value = false
     resetForm()
-    router.push('/dashboard/invoices')
+    router.push('/dashboard')
 }
 
 const closeErrorModal = () => {

@@ -139,7 +139,7 @@ const confirmSend = async () => {
 const closeSuccessModal = () => {
   showSuccessModal.value = false
   resetForm()
-  router.push('/dashboard/payments')
+  router.push('/dashboard')
 }
 
 // Reset form
@@ -172,12 +172,7 @@ onMounted(() => {
         >
           Back to Payments
         </button>
-        <button
-          @click="toast.success('Test toast')"
-          class="px-4 py-2 bg-blue-300 text-white rounded-lg hover:bg-blue-400 transition-all duration-300"
-        >
-          Test Toast
-        </button>
+
       </div>
     </div>
 

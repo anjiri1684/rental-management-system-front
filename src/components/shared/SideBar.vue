@@ -36,7 +36,6 @@ const navItems = [
   { name: 'Employees', path: '/dashboard/employees', icon: 'UserGroupIcon' },
   { name: 'Payment Received', path: '/dashboard/payment-received', icon: 'CurrencyDollarIcon' },
   { name: 'Add Payment', path: '/dashboard/payments/add', icon: 'ClipboardDocumentListIcon' },
-  { name: 'Main Account', path: '/dashboard/main-account', icon: 'BanknotesIcon' },
   { name: 'Invoices', path: '/dashboard/invoices', icon: 'DocumentTextIcon' }
 ]
 

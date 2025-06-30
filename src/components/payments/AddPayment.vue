@@ -19,7 +19,7 @@ const tenants = ref([])
 const apartments = ref([])
 
 // Payment statuses
-const statuses = ref(['confirmed', 'pending', 'failed'])
+const statuses = ref(['confirmed', 'pending', 'overdue'])
 
 // Form errors
 const errors = ref({})
@@ -127,7 +127,7 @@ const confirmSubmit = async () => {
 const closeSuccessModal = () => {
   showSuccessModal.value = false
   resetForm()
-  router.push('/dashboard/payments')
+  router.push('/dashboard')
 }
 
 // Close error modal
@@ -160,7 +160,7 @@ onMounted(() => {
       <h1 class="text-3xl font-bold text-gray-900">Add Payment</h1>
       <div class="flex space-x-4">
         <button
-          @click="router.push('/dashboard/payments')"
+          @click="router.push('/dashboard')"
           class="px-4 py-2 bg-gray-300 text-gray-900 rounded-lg shadow-md hover:bg-gray-400 transition-all duration-300"
         >
           Back to Payments

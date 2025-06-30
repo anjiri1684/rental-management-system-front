@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useToast } from 'vue-toastification'
 
 // Form state
 const firstName = ref('')
@@ -8,9 +9,18 @@ const lastName = ref('')
 const email = ref('')
 const phoneNumber = ref('')
 const idNumber = ref('')
+const position = ref('')
 const showConfirmModal = ref(false)
 const submissionStatus = ref(null) // For success/error messages
 const isSubmitting = ref(false) // For loading state
+
+// Available position options
+const positionOptions = [
+  { value: 'care_taker', label: 'Care Taker' },
+  { value: 'cleaner', label: 'Cleaner' },
+  { value: 'agent', label: 'Agent' },
+  { value: 'watchman_guard', label: 'Watchman/Guard' }
+]
 
 // Form errors
 const errors = ref({})
@@ -18,11 +28,14 @@ const errors = ref({})
 // Router
 const router = useRouter()
 
+const toast = useToast()
+
 // Validation functions
 const validateForm = () => {
   errors.value = {}
 
   if (!firstName.value.trim()) errors.value.firstName = 'First name is required'
+  if (!position.value) errors.value.position = 'Position is required'
   if (!lastName.value.trim()) errors.value.lastName = 'Last name is required'
   if (!email.value.trim()) {
     errors.value.email = 'Email is required'
@@ -60,7 +73,8 @@ const confirmSubmit = async () => {
     lastName: lastName.value,
     email: email.value,
     phoneNumber: phoneNumber.value,
-    idNumber: idNumber.value
+    idNumber: idNumber.value,
+    position: position.value
   }
 
   try {
@@ -68,7 +82,6 @@ const confirmSubmit = async () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-
       },
       body: JSON.stringify(payload)
     })
@@ -78,14 +91,14 @@ const confirmSubmit = async () => {
     }
 
     submissionStatus.value = { type: 'success', message: 'Employee added successfully!' }
-
+    toast.success("Employee added successfully!")
     // Reset form
     resetForm()
     showConfirmModal.value = false
 
     // Redirect to employees list after a short delay to show success message
     setTimeout(() => {
-      router.push('/dashboard/employees')
+      router.push('/dashboard')
     }, 1500)
   } catch (error) {
     submissionStatus.value = { type: 'error', message: error.message || 'An error occurred while adding the employee' }
@@ -100,6 +113,7 @@ const resetForm = () => {
   email.value = ''
   phoneNumber.value = ''
   idNumber.value = ''
+  position.value = ''
   errors.value = {}
   submissionStatus.value = null
 }
@@ -192,6 +206,21 @@ const resetForm = () => {
               :disabled="isSubmitting"
             />
             <p v-if="errors.idNumber" class="text-sm text-red-600 mt-1">{{ errors.idNumber }}</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Position</label>
+            <select
+              v-model="position"
+              class="w-full border-gray-300 p-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              required
+              :disabled="isSubmitting"
+            >
+              <option value="" disabled>Select position</option>
+              <option v-for="option in positionOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+            <p v-if="errors.position" class="text-sm text-red-600 mt-1">{{ errors.position }}</p>
           </div>
         </div>
 
