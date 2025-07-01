@@ -13,7 +13,6 @@ import MessagesView from '@/components/messages/MessagesView.vue'
 import ReportsView from '@/components/reports/ReportsView.vue'
 import SentMessagesView from '@/components/messages/SentMessagesView.vue'
 import AddNewTenant from '@/components/tenants/AddNewTenant.vue'
-import ViewTenants from '@/components/tenants/ViewTenants.vue'
 import HousesFlatsView from '@/components/properties/HousesFlatsView.vue'
 import WaterBillsView from '@/components/bills/WaterBillsView.vue'
 import EmployeesView from '@/components/employees/EmployeesView.vue'
@@ -27,6 +26,8 @@ import MessageDetails from '@/components/messages/MessageDetails.vue'
 import PaymentDetails from '@/components/payments/PaymentDetails.vue'
 import TenantDetails from '@/components/tenants/TenantDetails.vue'
 import EditTenant from '@/components/tenants/EditTenant.vue'
+import AllocateHouse from '@/components/tenants/AllocateHouse.vue'
+import TenantManagementVue from '@/components/tenants/TenantManagement.vue'
 
 const routes = [
   // Public Routes (No Sidebar, Navbar visible)
@@ -108,9 +109,15 @@ const routes = [
         meta: { requiresAuth: true },
       },
       {
-        path: 'dashboard/view-tenants',
+        path: '/dashboard/tenants/:id/allocate-house',
+        name: 'Allocate house',
+        component: AllocateHouse,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'dashboard/tenants',
         name: 'Tenants',
-        component: ViewTenants,
+        component: TenantManagementVue,
         meta: { requiresAuth: true },
       },
       {

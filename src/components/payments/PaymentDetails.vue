@@ -37,7 +37,7 @@ onMounted(fetchPayment)
       <h1 class="text-2xl md:text-3xl font-semibold text-gray-900 tracking-tight">Payment Details</h1>
       <div class="flex flex-wrap gap-3 mt-4 md:mt-0">
         <button
-          @click="router.push('/dashboard/payments')"
+          @click="router.push('/dashboard/payment-received')"
           class="px-4 py-2 bg-gray-300 text-gray-900 rounded-full hover:bg-gray-400 hover:scale-105 focus:ring-4 focus:ring-gray-100 transition-all duration-300 text-sm font-medium flex items-center gap-2"
         >
           <span>Back to Payments</span>

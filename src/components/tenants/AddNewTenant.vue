@@ -128,7 +128,7 @@ const submitForm = () => {
 const confirmSubmit = async () => {
     loading.value = true
     try {
-         await axios.post('http://localhost:8080/api/v1/tenants/add', {
+         await axios.post('http://localhost:8080/api/v1/tenants', {
             firstName: firstName.value,
             lastName: lastName.value,
             email: email.value,

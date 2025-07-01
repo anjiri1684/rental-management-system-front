@@ -29,7 +29,7 @@ const navItems = [
   { name: 'Reports', path: '/dashboard/reports', icon: 'ChartBarIcon' },
   { name: 'Sent Messages', path: '/dashboard/sent-messages', icon: 'PaperAirplaneIcon' },
   { name: 'Add New Tenant', path: '/dashboard/add-tenants', icon: 'UsersIcon' },
-  { name: 'View Tenants', path: '/dashboard/view-tenants', icon: 'UsersIcon' },
+  { name: 'View Tenants', path: '/dashboard/tenants', icon: 'UsersIcon' },
   { name: 'Houses/Flats', path: '/dashboard/houses-flats', icon: 'BuildingOfficeIcon' },
   { name: 'Add Houses/Flats', path: '/dashboard/houses/add', icon: 'HouseIcon' },
   { name: 'Water Bills', path: '/dashboard/water-bills', icon: 'CloudIcon' },

@@ -14,8 +14,7 @@ const tenants = ref([])
 // Form data for adding a water bill
 const newBill = ref({
   tenantId: '',
-  amount: '',
-  dueDate: '',
+  currentReading: '',
 })
 
 // Form data for updating status
@@ -31,10 +30,12 @@ const fetchTenants = async () => {
     tenants.value = response.data.data || []
     if (!tenants.value.length) {
       console.log('No tenants returned from API')
+      toast.warning('No tenants available')
     }
   } catch (error) {
     console.error('Error fetching tenants:', error.response?.data || error.message)
-    toast.error('Failed to fetch tenants: ' + (error.response?.data?.error || error.message))
+    errorMessage.value = error.response?.data?.error || 'Failed to fetch tenants'
+    toast.error(errorMessage.value)
   }
 }
 
@@ -59,14 +60,18 @@ const fetchWaterBills = async () => {
   }
 }
 
-// Add a new water bill
+// Add a new water bill using the tenant endpoint
 const addWaterBill = async () => {
   loading.value = true
   try {
-    await axios.post('http://localhost:8080/api/v1/bills', newBill.value)
-    toast.success('Water bill added successfully')
+    const payload = {
+      tenant_id: parseInt(newBill.value.tenantId),
+      current_reading: parseFloat(newBill.value.currentReading),
+    }
+    const response = await axios.post('http://localhost:8080/tenants/water-bills', payload)
+    toast.success(response.data.message || 'Water bill added successfully')
     showAddModal.value = false
-    newBill.value = { tenantId: '', amount: '', dueDate: '' }
+    newBill.value = { tenantId: '', currentReading: '' }
     fetchWaterBills()
   } catch (error) {
     console.error('Error adding water bill:', error.response?.data || error.message)
@@ -86,6 +91,7 @@ const updateBillStatus = async () => {
     })
     toast.success('Bill status updated successfully')
     showUpdateModal.value = false
+    updateStatus.value = { id: null, status: '' }
     fetchWaterBills()
   } catch (error) {
     console.error('Error updating bill status:', error.response?.data || error.message)
@@ -126,10 +132,15 @@ onMounted(() => {
     </div>
 
     <!-- Error Message -->
-    <div v-if="errorMessage" class="mb-6 text-red-600 text-sm font-medium text-center">{{ errorMessage }}</div>
+    <div v-if="errorMessage" class="mb-6 text-red-600 text-sm font-medium text-center animate__animated animate__shakeX">
+      {{ errorMessage }}
+    </div>
 
     <!-- Loading Indicator -->
-    <div v-if="loading" class="text-center text-gray-600">Loading...</div>
+    <div v-if="loading" class="text-center text-gray-600">
+      <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+      <span>Loading...</span>
+    </div>
 
     <!-- Water Bills Table -->
     <div v-else class="bg-white rounded-2xl shadow-lg p-6 animate__animated animate__fadeIn animate__delay-1s">
@@ -139,7 +150,8 @@ onMounted(() => {
             <tr class="border-b border-gray-100 text-gray-600">
               <th class="py-3 px-4 font-medium text-sm">Tenant</th>
               <th class="py-3 px-4 font-medium text-sm">Apartment</th>
-              <th class="py-3 px-4 font-medium text-sm">Amount</th>
+              <th class="py-3 px-4 font-medium text-sm">Amount (KES)</th>
+              <th class="py-3 px-4 font-medium text-sm">Usage (m³)</th>
               <th class="py-3 px-4 font-medium text-sm">Due Date</th>
               <th class="py-3 px-4 font-medium text-sm">Status</th>
               <th class="py-3 px-4 font-medium text-sm">Actions</th>
@@ -147,13 +159,14 @@ onMounted(() => {
           </thead>
           <tbody>
             <tr v-for="bill in waterBills" :key="bill.id" class="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200">
-              <td class="py-3 px-4 text-gray-800">{{ bill.tenant.first_name || 'N/A' }} {{ bill.tenant.last_name || '' }}</td>
-              <td class="py-3 px-4 text-gray-800">{{ bill.apartment.house_number || 'N/A' }}</td>
+              <td class="py-3 px-4 text-gray-800">{{ bill.tenant?.first_name || 'N/A' }} {{ bill.tenant?.last_name || '' }}</td>
+              <td class="py-3 px-4 text-gray-800">{{ bill.apartment?.house_number || 'N/A' }}</td>
               <td class="py-3 px-4 text-gray-800">KES {{ Number(bill.amount).toFixed(2) }}</td>
+              <td class="py-3 px-4 text-gray-800">{{ Number(bill.usage).toFixed(2) }}</td>
               <td class="py-3 px-4 text-gray-800">{{ new Date(bill.due_date).toLocaleDateString() }}</td>
               <td class="py-3 px-4">
                 <span :class="{
-                  'text-green-600': bill.status === 'confirmed',
+                  'text-green-600': bill.status === 'confirmed' || bill.status === 'paid',
                   'text-yellow-600': bill.status === 'pending',
                   'text-red-600': bill.status === 'overdue'
                 }" class="font-medium">
@@ -164,13 +177,14 @@ onMounted(() => {
                 <button
                   @click="openUpdateModal(bill)"
                   class="px-3 py-1 bg-blue-600 text-white rounded-full hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all duration-300 text-sm"
+                  :disabled="bill.status === 'confirmed' || bill.status === 'paid'"
                 >
                   Update Status
                 </button>
               </td>
             </tr>
             <tr v-if="waterBills.length === 0">
-              <td colspan="6" class="py-6 text-center text-gray-500 text-sm">No water bills found</td>
+              <td colspan="7" class="py-6 text-center text-gray-500 text-sm">No water bills found</td>
             </tr>
           </tbody>
         </table>
@@ -196,21 +210,14 @@ onMounted(() => {
             </select>
           </div>
           <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Amount (KES)</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Current Reading (m³)</label>
             <input
-              v-model="newBill.amount"
+              v-model="newBill.currentReading"
               type="number"
               step="0.01"
+              min="0"
               class="w-full border border-gray-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-              required
-            />
-          </div>
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Due Date</label>
-            <input
-              v-model="newBill.dueDate"
-              type="date"
-              class="w-full border border-gray-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+              placeholder="Enter current meter reading"
               required
             />
           </div>
@@ -224,7 +231,7 @@ onMounted(() => {
             </button>
             <button
               type="button"
-              @click="showAddModal = false"
+              @click="showAddModal = false; newBill = { tenantId: '', currentReading: '' }"
               class="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-full hover:bg-gray-300 focus:ring-4 focus:ring-gray-100 transition-all duration-300 text-sm font-medium"
             >
               Cancel
@@ -247,7 +254,7 @@ onMounted(() => {
               required
             >
               <option value="pending">Pending</option>
-              <option value="confirmed">Confirmed</option>
+              <option value="paid">Paid</option>
               <option value="overdue">Overdue</option>
             </select>
           </div>
@@ -261,7 +268,7 @@ onMounted(() => {
             </button>
             <button
               type="button"
-              @click="showUpdateModal = false"
+              @click="showUpdateModal = false; updateStatus = { id: null, status: '' }"
               class="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-full hover:bg-gray-300 focus:ring-4 focus:ring-gray-100 transition-all duration-300 text-sm font-medium"
             >
               Cancel
@@ -277,6 +284,7 @@ onMounted(() => {
 @import 'animate.css';
 .animate__fadeIn { animation-duration: 0.5s; }
 .animate__delay-1s { animation-delay: 0.3s; }
+.animate__shakeX { animation-duration: 0.5s; }
 
 ::-webkit-scrollbar {
   height: 6px;

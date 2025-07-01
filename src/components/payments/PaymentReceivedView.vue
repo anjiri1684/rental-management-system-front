@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import axios from 'axios'
+import PaymentActions from './PaymentActions.vue'
 
 const payments = ref([])
 const loading = ref(false)
@@ -13,6 +14,8 @@ const total = ref(0)
 const totalPages = ref(1)
 const tenantName = ref('')
 const houseNumber = ref('')
+const showActionsModal = ref(false)
+const selectedPayment = ref(null)
 const router = useRouter()
 const toast = useToast()
 
@@ -64,6 +67,34 @@ const resetFilters = () => {
 // View payment details
 const viewPaymentDetails = (paymentId) => {
   router.push(`/dashboard/payments/${paymentId}`)
+}
+
+// Open actions modal for confirm/validate
+const openActionsModal = (payment) => {
+  selectedPayment.value = payment
+  showActionsModal.value = true
+}
+
+// Handle payment action (confirm/validate)
+const handlePaymentAction = async (action, paymentId) => {
+  try {
+    let response
+    if (action === 'confirm') {
+      response = await axios.patch(`http://localhost:8080/api/v1/payments/${paymentId}/confirm`)
+    } else if (action === 'validate') {
+      response = await axios.post(`http://localhost:8080/api/v1/payments/${paymentId}/validate`)
+    }
+    toast.success(response.data.message || `${action.charAt(0).toUpperCase() + action.slice(1)} successful`)
+    fetchPayments() // Refresh payments
+  } catch (error) {
+    toast.error(error.response?.data?.error || `Failed to ${action} payment`)
+  }
+}
+
+// Close actions modal
+const closeActionsModal = () => {
+  showActionsModal.value = false
+  selectedPayment.value = null
 }
 
 // Load payments on mount
@@ -152,14 +183,13 @@ onMounted(fetchPayments)
               <th class="py-4 px-4 font-medium text-sm">Amount (KSh)</th>
               <th class="py-4 px-4 font-medium text-sm">Payment Date</th>
               <th class="py-4 px-4 font-medium text-sm">Status</th>
-              <th class="py-4 px-4 font-medium text-sm">Details</th>
+              <th class="py-4 px-4 font-medium text-sm">Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr
               v-for="payment in payments"
               :key="payment.id"
-              @click="viewPaymentDetails(payment.id)"
               class="border-b border-gray-100 hover:bg-gray-100 transition-colors duration-200 cursor-pointer relative group"
             >
               <td class="py-4 px-4 text-gray-800">{{ payment.tenant.first_name }} {{ payment.tenant.last_name }}</td>
@@ -179,9 +209,21 @@ onMounted(fetchPayments)
                 </span>
               </td>
               <td class="py-4 px-4">
-                <span class="text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  View Details
-                </span>
+                <div class="flex gap-2">
+                  <button
+                    @click.stop="openActionsModal(payment)"
+                    class="px-3 py-1 bg-blue-500 text-white rounded-full hover:bg-blue-600 text-sm"
+                    :disabled="payment.status === 'confirmed'"
+                  >
+                    Actions
+                  </button>
+                  <button
+                    @click.stop="viewPaymentDetails(payment.id)"
+                    class="px-3 py-1 bg-gray-300 text-gray-900 rounded-full hover:bg-gray-400 text-sm"
+                  >
+                    Details
+                  </button>
+                </div>
               </td>
             </tr>
             <tr v-if="payments.length === 0 && !loading">
@@ -233,6 +275,15 @@ onMounted(fetchPayments)
     <div v-if="errorMessage" class="mt-6 text-red-600 text-sm font-medium text-center animate__animated animate__shakeX">
       {{ errorMessage }}
     </div>
+
+    <!-- Payment Actions Modal -->
+    <PaymentActions
+      v-if="showActionsModal"
+      :payment="selectedPayment"
+      @confirm="handlePaymentAction('confirm', selectedPayment.id)"
+      @validate="handlePaymentAction('validate', selectedPayment.id)"
+      @close="closeActionsModal"
+    />
   </div>
 </template>
 
@@ -243,7 +294,6 @@ onMounted(fetchPayments)
 .animate__delay-2s { animation-delay: 0.6s; }
 .animate__shakeX { animation-duration: 0.5s; }
 
-/* Smooth scrollbar for table overflow */
 ::-webkit-scrollbar {
   height: 6px;
   width: 6px;
@@ -257,12 +307,10 @@ onMounted(fetchPayments)
   border-radius: 9999px;
 }
 
-/* Table row hover effect */
 tbody tr:hover {
   transform: translateY(-1px);
 }
 
-/* Ensure table is responsive */
 table {
   min-width: 100%;
 }
