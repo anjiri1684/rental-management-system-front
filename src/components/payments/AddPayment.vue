@@ -1,3 +1,4 @@
+
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -10,6 +11,7 @@ const apartmentId = ref(null)
 const amount = ref('')
 const paymentDate = ref('')
 const status = ref('')
+const type = ref('') // NEW: Added type ref
 const showConfirmModal = ref(false)
 const showSuccessModal = ref(false)
 const showErrorModal = ref(false)
@@ -20,6 +22,9 @@ const apartments = ref([])
 
 // Payment statuses
 const statuses = ref(['confirmed', 'pending', 'overdue'])
+
+// Payment types (you can customize this list)
+const paymentTypes = ref(['rent', 'deposit', 'water', 'electricity', 'service_charge', 'other']) // NEW: Added payment types
 
 // Form errors
 const errors = ref({})
@@ -79,6 +84,7 @@ const validateForm = () => {
     errors.value.paymentDate = 'Invalid date format (use YYYY-MM-DD)'
   }
   if (!status.value) errors.value.status = 'Status is required'
+  if (!type.value) errors.value.type = 'Payment type is required' // NEW: Added type validation
 
   console.log('Errors:', errors.value)
   if (Object.keys(errors.value).length > 0) {
@@ -107,6 +113,7 @@ const confirmSubmit = async () => {
       amount: parseFloat(amount.value),
       paymentDate: paymentDate.value,
       status: status.value,
+      type: type.value, // NEW: Included type in the payload
     })
     loading.value = false
     showConfirmModal.value = false
@@ -143,6 +150,7 @@ const resetForm = () => {
   amount.value = ''
   paymentDate.value = ''
   status.value = ''
+  type.value = '' // NEW: Added type to reset
   errors.value = {}
 }
 
@@ -155,7 +163,6 @@ onMounted(() => {
 
 <template>
   <div class="p-6">
-    <!-- Header -->
     <div class="flex justify-between items-center mb-6 animate__animated animate__fadeInDown">
       <h1 class="text-3xl font-bold text-gray-900">Add Payment</h1>
       <div class="flex space-x-4">
@@ -174,10 +181,8 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Payment Form -->
     <div class="bg-white/95 backdrop-blur-sm shadow-2xl rounded-lg p-6 animate__animated animate__fadeInUp animate__delay-1">
       <form @submit.prevent="submitForm" :disabled="loading">
-        <!-- Payment Details -->
         <h2 class="text-xl font-semibold text-gray-900 mb-4">Payment Details</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div>
@@ -251,9 +256,21 @@ onMounted(() => {
             </select>
             <p v-if="errors.status" class="text-sm text-red-600 mt-1">{{ errors.status }}</p>
           </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Payment Type</label>
+            <select
+              v-model="type"
+              class="w-full border-gray-300 pl-2 py-2.5 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              required
+              :disabled="loading"
+            >
+              <option value="" disabled>Select payment type</option>
+              <option v-for="t in paymentTypes" :key="t" :value="t">{{ t.replace('_', ' ') }}</option>
+            </select>
+            <p v-if="errors.type" class="text-sm text-red-600 mt-1">{{ errors.type }}</p>
+          </div>
         </div>
 
-        <!-- Actions -->
         <div class="flex justify-end space-x-4">
           <button
             type="button"
@@ -274,7 +291,6 @@ onMounted(() => {
       </form>
     </div>
 
-    <!-- Confirmation Modal -->
     <div
       v-if="showConfirmModal"
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -282,7 +298,7 @@ onMounted(() => {
       <div class="bg-white rounded-lg p-6 max-w-md w-full animate__animated animate__zoomIn">
         <h2 class="text-xl font-bold text-gray-900 mb-4">Confirm Payment Addition</h2>
         <p class="text-gray-600 mb-4">
-          Add payment of KSh {{ amount }} for
+          Add {{ type.replace('_', ' ') }} payment of KSh {{ amount }} for
           {{ tenants.find(t => t.id === tenantId)?.first_name }}
           {{ tenants.find(t => t.id === tenantId)?.last_name }}
           on {{ paymentDate }}?
@@ -306,7 +322,6 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Success Modal -->
     <div
       v-if="showSuccessModal"
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -314,7 +329,7 @@ onMounted(() => {
       <div class="bg-white rounded-lg p-6 max-w-md w-full animate__animated animate__zoomIn">
         <h2 class="text-xl font-bold text-green-600 mb-4">Payment Added Successfully</h2>
         <p class="text-gray-600 mb-4">
-          Payment of KSh {{ amount }} for
+          {{ type.replace('_', ' ') }} payment of KSh {{ amount }} for
           {{ tenants.find(t => t.id === tenantId)?.first_name }}
           {{ tenants.find(t => t.id === tenantId)?.last_name }}
           has been added.
@@ -330,7 +345,6 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Error Modal -->
     <div
       v-if="showErrorModal"
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -355,3 +369,4 @@ onMounted(() => {
 @import 'animate.css';
 .animate__delay-1 { animation-delay: 0.2s; }
 </style>
+```

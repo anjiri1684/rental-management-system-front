@@ -1,301 +1,208 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useToast } from 'vue-toastification'
-import axios from 'axios'
+import { ref, onMounted } from 'vue';
+import { useToast } from 'vue-toastification';
+import axios from 'axios';
 
-const toast = useToast()
-const waterBills = ref([])
-const loading = ref(false)
-const errorMessage = ref('')
-const showAddModal = ref(false)
-const showUpdateModal = ref(false)
-const tenants = ref([])
+// Import child components
+import WaterBillTable from './WaterBillTable.vue';
+import AddWaterBillModal from './AddWaterBillModal.vue';
+import UpdateWaterBillStatusModal from './UpdateWaterBillStatusModal.vue';
+import LoadingSpinner from './LoadingSpinner.vue';
+import ErrorMessage from './ErrorMessage.vue';
 
-// Form data for adding a water bill
+const toast = useToast();
+const waterBills = ref([]);
+const tenants = ref([]);
+const loadingWaterBills = ref(false); // Specific loading for fetching bills
+const loadingTenants = ref(false); // Specific loading for fetching tenants
+const isAddingBill = ref(false); // Loading for adding a new bill
+const isUpdatingStatus = ref(false); // Loading for updating bill status
+const errorMessage = ref('');
+const showAddModal = ref(false);
+const showUpdateModal = ref(false);
+
 const newBill = ref({
   tenantId: '',
   currentReading: '',
-})
+});
 
-// Form data for updating status
 const updateStatus = ref({
   id: null,
-  status: ''
-})
+  status: '',
+});
 
-// Fetch all tenants for the dropdown
+// --- API Calls ---
+
 const fetchTenants = async () => {
+  loadingTenants.value = true;
   try {
-    const response = await axios.get('http://localhost:8080/api/v1/tenants')
-    tenants.value = response.data.data || []
+    const response = await axios.get('http://localhost:8080/api/v1/tenants');
+    tenants.value = response.data.data || [];
     if (!tenants.value.length) {
-      console.log('No tenants returned from API')
-      toast.warning('No tenants available')
+      toast.warning('No tenants available. Please add tenants first.');
     }
   } catch (error) {
-    console.error('Error fetching tenants:', error.response?.data || error.message)
-    errorMessage.value = error.response?.data?.error || 'Failed to fetch tenants'
-    toast.error(errorMessage.value)
-  }
-}
-
-// Fetch all water bills
-const fetchWaterBills = async () => {
-  loading.value = true
-  try {
-    const response = await axios.get('http://localhost:8080/api/v1/bills')
-    waterBills.value = response.data.data || []
-    if (!waterBills.value.length) {
-      console.log('No water bills returned from API')
-      errorMessage.value = 'No water bills found'
-    } else {
-      errorMessage.value = ''
-    }
-  } catch (error) {
-    console.error('Error fetching water bills:', error.response?.data || error.message)
-    errorMessage.value = error.response?.data?.error || 'Failed to fetch water bills'
-    toast.error(errorMessage.value)
+    console.error('Error fetching tenants:', error.response?.data || error.message);
+    errorMessage.value = error.response?.data?.error || 'Failed to fetch tenants.';
+    toast.error(errorMessage.value);
   } finally {
-    loading.value = false
+    loadingTenants.value = false;
   }
-}
+};
 
-// Add a new water bill using the tenant endpoint
-const addWaterBill = async () => {
-  loading.value = true
+const fetchWaterBills = async () => {
+  loadingWaterBills.value = true;
+  try {
+    const response = await axios.get('http://localhost:8080/api/v1/bills');
+    waterBills.value = response.data.data || [];
+    if (!waterBills.value.length && !errorMessage.value) { // Only show if no other error is present
+      errorMessage.value = 'No water bills found.';
+    } else if (waterBills.value.length > 0) {
+      errorMessage.value = ''; // Clear error if bills are found
+    }
+  } catch (error) {
+    console.error('Error fetching water bills:', error.response?.data || error.message);
+    errorMessage.value = error.response?.data?.error || 'Failed to fetch water bills.';
+    toast.error(errorMessage.value);
+  } finally {
+    loadingWaterBills.value = false;
+  }
+};
+
+const addWaterBill = async (billData) => {
+  isAddingBill.value = true;
   try {
     const payload = {
-      tenant_id: parseInt(newBill.value.tenantId),
-      current_reading: parseFloat(newBill.value.currentReading),
-    }
-    const response = await axios.post('http://localhost:8080/tenants/water-bills', payload)
-    toast.success(response.data.message || 'Water bill added successfully')
-    showAddModal.value = false
-    newBill.value = { tenantId: '', currentReading: '' }
-    fetchWaterBills()
+      tenant_id: parseInt(billData.tenantId),
+      current_reading: parseFloat(billData.currentReading),
+    };
+    const response = await axios.post('http://localhost:8080/api/v1/tenants/water-bills', payload);
+    toast.success(response.data.message || 'Water bill added successfully!');
+    showAddModal.value = false;
+    newBill.value = { tenantId: '', currentReading: '' }; // Reset form
+    fetchWaterBills(); // Refresh the list
   } catch (error) {
-    console.error('Error adding water bill:', error.response?.data || error.message)
-    errorMessage.value = error.response?.data?.error || 'Failed to add water bill'
-    toast.error(errorMessage.value)
+    console.error('Error adding water bill:', error.response?.data || error.message);
+    toast.error(error.response?.data?.error || 'Failed to add water bill.');
   } finally {
-    loading.value = false
+    isAddingBill.value = false;
   }
-}
+};
 
-// Update bill status
-const updateBillStatus = async () => {
-  loading.value = true
+const updateBillStatus = async (statusData) => {
+  isUpdatingStatus.value = true;
   try {
-    await axios.patch(`http://localhost:8080/api/v1/bills/${updateStatus.value.id}/status`, {
-      status: updateStatus.value.status
-    })
-    toast.success('Bill status updated successfully')
-    showUpdateModal.value = false
-    updateStatus.value = { id: null, status: '' }
-    fetchWaterBills()
+    await axios.patch(`http://localhost:8080/api/v1/bills/${statusData.id}/status`, {
+      status: statusData.status,
+    });
+    toast.success('Bill status updated successfully!');
+    showUpdateModal.value = false;
+    updateStatus.value = { id: null, status: '' }; // Reset form
+    fetchWaterBills(); // Refresh the list
   } catch (error) {
-    console.error('Error updating bill status:', error.response?.data || error.message)
-    errorMessage.value = error.response?.data?.error || 'Failed to update bill status'
-    toast.error(errorMessage.value)
+    console.error('Error updating bill status:', error.response?.data || error.message);
+    toast.error(error.response?.data?.error || 'Failed to update bill status.');
   } finally {
-    loading.value = false
+    isUpdatingStatus.value = false;
   }
-}
+};
 
-// Open update modal
+// --- Modal Handlers ---
+
+const openAddModal = () => {
+  newBill.value = { tenantId: '', currentReading: '' }; // Ensure clean form
+  showAddModal.value = true;
+};
+
 const openUpdateModal = (bill) => {
-  updateStatus.value = { id: bill.id, status: bill.status }
-  showUpdateModal.value = true
-}
+  updateStatus.value = { id: bill.id, status: bill.status };
+  showUpdateModal.value = true;
+};
 
-// Fetch data on mount
+// --- Lifecycle Hook ---
+
 onMounted(() => {
-  fetchTenants()
-  fetchWaterBills()
-})
+  fetchTenants();
+  fetchWaterBills();
+});
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 p-6 md:p-8">
+  <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6 md:p-8 font-inter">
     <!-- Header -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 animate__animated animate__fadeIn">
       <div>
-        <h1 class="text-2xl md:text-3xl font-semibold text-gray-900 tracking-tight">Water Bills</h1>
-        <p class="text-gray-600 text-sm mt-1">Manage water bills for your tenants.</p>
+        <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight">Water Bills Management</h1>
+        <p class="text-gray-600 text-md mt-2">Efficiently manage and track water bills for your tenants.</p>
       </div>
       <button
-        @click="showAddModal = true"
-        class="mt-4 md:mt-0 px-4 py-2 bg-green-600 text-white rounded-full hover:bg-green-700 focus:ring-4 focus:ring-green-200 transition-all duration-300 text-sm font-medium"
+        @click="openAddModal"
+        class="mt-6 md:mt-0 px-6 py-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-all duration-300 text-base font-semibold flex items-center justify-center"
       >
-        Add Water Bill
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+        </svg>
+        Add New Water Bill
       </button>
     </div>
 
-    <!-- Error Message -->
-    <div v-if="errorMessage" class="mb-6 text-red-600 text-sm font-medium text-center animate__animated animate__shakeX">
-      {{ errorMessage }}
+    <!-- Error Message Component -->
+    <ErrorMessage v-if="errorMessage" :message="errorMessage" class="mb-6" />
+
+    <!-- Loading Indicator for main data fetch -->
+    <div v-if="loadingWaterBills || loadingTenants" class="text-center py-12">
+      <LoadingSpinner />
+      <span class="text-gray-600 mt-3 block">Loading water bills and tenant data...</span>
     </div>
 
-    <!-- Loading Indicator -->
-    <div v-if="loading" class="text-center text-gray-600">
-      <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-      <span>Loading...</span>
-    </div>
+    <!-- Water Bills Table Component -->
+    <WaterBillTable
+      v-else
+      :waterBills="waterBills"
+      @update-status="openUpdateModal"
+      class="animate__animated animate__fadeInUp animate__delay-1s"
+    />
 
-    <!-- Water Bills Table -->
-    <div v-else class="bg-white rounded-2xl shadow-lg p-6 animate__animated animate__fadeIn animate__delay-1s">
-      <div class="overflow-x-auto">
-        <table class="w-full text-left">
-          <thead>
-            <tr class="border-b border-gray-100 text-gray-600">
-              <th class="py-3 px-4 font-medium text-sm">Tenant</th>
-              <th class="py-3 px-4 font-medium text-sm">Apartment</th>
-              <th class="py-3 px-4 font-medium text-sm">Amount (KES)</th>
-              <th class="py-3 px-4 font-medium text-sm">Usage (m³)</th>
-              <th class="py-3 px-4 font-medium text-sm">Due Date</th>
-              <th class="py-3 px-4 font-medium text-sm">Status</th>
-              <th class="py-3 px-4 font-medium text-sm">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="bill in waterBills" :key="bill.id" class="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200">
-              <td class="py-3 px-4 text-gray-800">{{ bill.tenant?.first_name || 'N/A' }} {{ bill.tenant?.last_name || '' }}</td>
-              <td class="py-3 px-4 text-gray-800">{{ bill.apartment?.house_number || 'N/A' }}</td>
-              <td class="py-3 px-4 text-gray-800">KES {{ Number(bill.amount).toFixed(2) }}</td>
-              <td class="py-3 px-4 text-gray-800">{{ Number(bill.usage).toFixed(2) }}</td>
-              <td class="py-3 px-4 text-gray-800">{{ new Date(bill.due_date).toLocaleDateString() }}</td>
-              <td class="py-3 px-4">
-                <span :class="{
-                  'text-green-600': bill.status === 'confirmed' || bill.status === 'paid',
-                  'text-yellow-600': bill.status === 'pending',
-                  'text-red-600': bill.status === 'overdue'
-                }" class="font-medium">
-                  {{ bill.status }}
-                </span>
-              </td>
-              <td class="py-3 px-4">
-                <button
-                  @click="openUpdateModal(bill)"
-                  class="px-3 py-1 bg-blue-600 text-white rounded-full hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all duration-300 text-sm"
-                  :disabled="bill.status === 'confirmed' || bill.status === 'paid'"
-                >
-                  Update Status
-                </button>
-              </td>
-            </tr>
-            <tr v-if="waterBills.length === 0">
-              <td colspan="7" class="py-6 text-center text-gray-500 text-sm">No water bills found</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <!-- Add Water Bill Modal Component -->
+    <AddWaterBillModal
+      :show="showAddModal"
+      :tenants="tenants"
+      :is-loading="isAddingBill"
+      @close="showAddModal = false"
+      @add-bill="addWaterBill"
+    />
 
-    <!-- Add Water Bill Modal -->
-    <div v-if="showAddModal" class="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center">
-      <div class="bg-white rounded-2xl p-6 w-full max-w-md animate__animated animate__fadeIn">
-        <h2 class="text-xl font-semibold text-gray-900 mb-4">Add Water Bill</h2>
-        <form @submit.prevent="addWaterBill">
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Tenant</label>
-            <select
-              v-model="newBill.tenantId"
-              class="w-full border border-gray-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-              required
-            >
-              <option value="" disabled>Select Tenant</option>
-              <option v-for="tenant in tenants" :key="tenant.id" :value="tenant.id">
-                {{ tenant.first_name }} {{ tenant.last_name }} ({{ tenant.house_number }})
-              </option>
-            </select>
-          </div>
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Current Reading (m³)</label>
-            <input
-              v-model="newBill.currentReading"
-              type="number"
-              step="0.01"
-              min="0"
-              class="w-full border border-gray-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-              placeholder="Enter current meter reading"
-              required
-            />
-          </div>
-          <div class="flex gap-3">
-            <button
-              type="submit"
-              class="flex-1 px-4 py-2 bg-green-600 text-white rounded-full hover:bg-green-700 focus:ring-4 focus:ring-green-200 transition-all duration-300 text-sm font-medium"
-              :disabled="loading"
-            >
-              Add Bill
-            </button>
-            <button
-              type="button"
-              @click="showAddModal = false; newBill = { tenantId: '', currentReading: '' }"
-              class="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-full hover:bg-gray-300 focus:ring-4 focus:ring-gray-100 transition-all duration-300 text-sm font-medium"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Update Status Modal -->
-    <div v-if="showUpdateModal" class="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center">
-      <div class="bg-white rounded-2xl p-6 w-full max-w-md animate__animated animate__fadeIn">
-        <h2 class="text-xl font-semibold text-gray-900 mb-4">Update Bill Status</h2>
-        <form @submit.prevent="updateBillStatus">
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
-            <select
-              v-model="updateStatus.status"
-              class="w-full border border-gray-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-              required
-            >
-              <option value="pending">Pending</option>
-              <option value="paid">Paid</option>
-              <option value="overdue">Overdue</option>
-            </select>
-          </div>
-          <div class="flex gap-3">
-            <button
-              type="submit"
-              class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all duration-300 text-sm font-medium"
-              :disabled="loading"
-            >
-              Update Status
-            </button>
-            <button
-              type="button"
-              @click="showUpdateModal = false; updateStatus = { id: null, status: '' }"
-              class="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-full hover:bg-gray-300 focus:ring-4 focus:ring-gray-100 transition-all duration-300 text-sm font-medium"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <!-- Update Status Modal Component -->
+    <UpdateWaterBillStatusModal
+      :show="showUpdateModal"
+      :bill-to-update="updateStatus"
+      :is-loading="isUpdatingStatus"
+      @close="showUpdateModal = false"
+      @update-status="updateBillStatus"
+    />
   </div>
 </template>
 
-<style scoped>
+<style>
+/* Global styles or font imports */
 @import 'animate.css';
-.animate__fadeIn { animation-duration: 0.5s; }
-.animate__delay-1s { animation-delay: 0.3s; }
-.animate__shakeX { animation-duration: 0.5s; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+/* Scrollbar styling */
 ::-webkit-scrollbar {
-  height: 6px;
-  width: 6px;
+  height: 8px;
+  width: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: #cbd5e1; /* gray-300 */
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: #f8fafc; /* gray-50 */
   border-radius: 9999px;
 }
 </style>

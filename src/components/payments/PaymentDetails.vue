@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import axios from 'axios'
-import { User, Home, DollarSign, Calendar, Clock, AlertCircle } from 'lucide-vue-next'
+import { User, Home, DollarSign, Calendar, Clock, AlertCircle, ArrowLeft } from 'lucide-vue-next' // Added ArrowLeft for the back button
 
 const payment = ref(null)
 const loading = ref(false)
@@ -31,119 +31,102 @@ onMounted(fetchPayment)
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 p-6 md:p-8">
-    <!-- Header -->
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 animate__animated animate__fadeIn">
-      <h1 class="text-2xl md:text-3xl font-semibold text-gray-900 tracking-tight">Payment Details</h1>
-      <div class="flex flex-wrap gap-3 mt-4 md:mt-0">
+  <div class="min-h-screen bg-gray-50 p-6 md:p-8 lg:p-10 font-sans">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+      <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight">Payment Details</h1>
+      <div class="mt-4 md:mt-0">
         <button
           @click="router.push('/dashboard/payment-received')"
-          class="px-4 py-2 bg-gray-300 text-gray-900 rounded-full hover:bg-gray-400 hover:scale-105 focus:ring-4 focus:ring-gray-100 transition-all duration-300 text-sm font-medium flex items-center gap-2"
+          class="inline-flex items-center px-5 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors duration-200 ease-in-out shadow-sm text-base font-medium"
         >
-          <span>Back to Payments</span>
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-          </svg>
+          <ArrowLeft class="w-5 h-5 mr-2" />
+          Back to Payments
         </button>
       </div>
     </div>
 
-    <!-- Payment Details -->
-    <div class="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-6 md:p-8 animate__animated animate__fadeIn animate__delay-1s">
+    <div class="bg-white rounded-xl shadow-xl p-6 md:p-8 lg:p-10 border border-gray-100">
       <div v-if="loading" class="flex items-center justify-center h-64">
-        <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
-      <div v-else-if="errorMessage" class="text-red-600 text-base font-medium text-center animate__animated animate__bounceIn">
-        <AlertCircle class="w-6 h-6 inline-block mr-2" />
+      <div v-else-if="errorMessage" class="text-red-600 text-lg font-semibold text-center py-10">
+        <AlertCircle class="w-8 h-8 inline-block mr-3 text-red-500" />
         {{ errorMessage }}
       </div>
-      <div v-else-if="payment" class="space-y-6">
-        <!-- Header with Gradient -->
-        <div class="bg-gradient-to-r from-blue-600 to-blue-400 rounded-lg p-4 text-white">
-          <h2 class="text-xl font-semibold">Payment #{{ payment.id }}</h2>
-          <p class="text-sm opacity-80">Details for payment made on {{ new Date(payment.payment_date).toLocaleDateString() }}</p>
-        </div>
+      <div v-else-if="payment" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="flex flex-col p-6 bg-gradient-to-br from-blue-600 to-blue-500 rounded-lg shadow-md text-white">
+          <div class="flex items-center mb-4">
+            <DollarSign class="w-8 h-8 mr-3 opacity-90" />
+            <h2 class="text-2xl font-bold">Payment #{{ payment.id }}</h2>
+          </div>
+          <p class="text-lg font-semibold mb-2">KSh {{ payment.amount.toFixed(2) }}</p>
+          <p class="text-sm opacity-90">Made on {{ new Date(payment.payment_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) }}</p>
 
-        <!-- Payment Information -->
-        <div>
-          <h3 class="text-lg font-medium text-gray-700 mb-4 border-b border-gray-200 pb-2">Payment Information</h3>
-          <div class="space-y-4">
-            <div class="flex items-center gap-3">
-              <DollarSign class="w-5 h-5 text-blue-600" />
-              <div>
-                <span class="text-sm font-medium text-gray-600">Amount (KSh):</span>
-                <span class="ml-2 text-gray-800 font-medium">{{ payment.amount.toFixed(2) }}</span>
-              </div>
+          <div class="mt-auto pt-6 border-t border-blue-400/50">
+            <div class="flex items-center text-sm opacity-90">
+              <Calendar class="w-4 h-4 mr-2" />
+              <span>Payment Date: {{ new Date(payment.payment_date).toLocaleDateString() }}</span>
             </div>
-            <div class="flex items-center gap-3">
-              <Calendar class="w-5 h-5 text-blue-600" />
-              <div>
-                <span class="text-sm font-medium text-gray-600">Payment Date:</span>
-                <span class="ml-2 text-gray-800 font-medium">{{ new Date(payment.payment_date).toLocaleDateString() }}</span>
-              </div>
+            <div class="flex items-center text-sm opacity-90 mt-2">
+              <Clock class="w-4 h-4 mr-2" />
+              <span>Recorded: {{ new Date(payment.created_at).toLocaleString('en-US', { timeZone: 'Africa/Nairobi', dateStyle: 'short', timeStyle: 'short' }) }}</span>
             </div>
-            <div class="flex items-center gap-3">
-              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div>
-                <span class="text-sm font-medium text-gray-600">Status:</span>
-                <span
-                  :class="{
-                    'bg-green-100 text-green-600': payment.status === 'confirmed',
-                    'bg-yellow-100 text-yellow-600': payment.status === 'pending',
-                    'bg-red-100 text-red-600': payment.status === 'overdue'
-                  }"
-                  class="ml-2 px-2 py-1 rounded-full text-sm font-medium"
-                >
-                  {{ payment.status }}
-                </span>
-              </div>
-            </div>
-            <div class="flex items-center gap-3">
-              <Clock class="w-5 h-5 text-blue-600" />
-              <div>
-                <span class="text-sm font-medium text-gray-600">Created At:</span>
-                <span class="ml-2 text-gray-800 font-medium">{{ new Date(payment.created_at).toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }) }}</span>
-              </div>
+            <div class="flex items-center mt-3">
+              <span
+                :class="{
+                  'bg-green-100 text-green-700': payment.status === 'confirmed',
+                  'bg-yellow-100 text-yellow-700': payment.status === 'pending',
+                  'bg-red-100 text-red-700': payment.status === 'overdue'
+                }"
+                class="px-3 py-1 rounded-full text-sm font-semibold tracking-wide capitalize"
+              >
+                {{ payment.status }}
+              </span>
             </div>
           </div>
         </div>
 
-        <!-- Tenant & Apartment Information -->
-        <div>
-          <h3 class="text-lg font-medium text-gray-700 mb-4 border-b border-gray-200 pb-2">Tenant & Apartment</h3>
-          <div class="space-y-4">
-            <div class="flex items-center gap-3">
-              <User class="w-5 h-5 text-blue-600" />
-              <div>
-                <span class="text-sm font-medium text-gray-600">Tenant Name:</span>
-                <span class="ml-2 text-gray-800 font-medium">{{ payment.tenant.first_name }} {{ payment.tenant.last_name }}</span>
+        <div class="space-y-8">
+          <div>
+            <h3 class="text-xl font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">Tenant Details</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="flex items-center gap-3 bg-gray-50 p-3 rounded-md">
+                <User class="w-5 h-5 text-blue-600" />
+                <div>
+                  <p class="text-sm font-medium text-gray-600">Tenant Name</p>
+                  <p class="text-base font-semibold text-gray-900">{{ payment.tenant.first_name }} {{ payment.tenant.last_name }}</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-3 bg-gray-50 p-3 rounded-md">
+                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                <div>
+                  <p class="text-sm font-medium text-gray-600">Tenant ID</p>
+                  <p class="text-base font-semibold text-gray-900">{{ payment.tenant_id }}</p>
+                </div>
               </div>
             </div>
-            <div class="flex items-center gap-3">
-              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-              </svg>
-              <div>
-                <span class="text-sm font-medium text-gray-600">Tenant ID:</span>
-                <span class="ml-2 text-gray-800 font-medium">{{ payment.tenant_id }}</span>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">Apartment Details</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="flex items-center gap-3 bg-gray-50 p-3 rounded-md">
+                <Home class="w-5 h-5 text-blue-600" />
+                <div>
+                  <p class="text-sm font-medium text-gray-600">House Number</p>
+                  <p class="text-base font-semibold text-gray-900">{{ payment.apartment.house_number }}</p>
+                </div>
               </div>
-            </div>
-            <div class="flex items-center gap-3">
-              <Home class="w-5 h-5 text-blue-600" />
-              <div>
-                <span class="text-sm font-medium text-gray-600">House Number:</span>
-                <span class="ml-2 text-gray-800 font-medium">{{ payment.apartment.house_number }}</span>
-              </div>
-            </div>
-            <div class="flex items-center gap-3">
-              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <div>
-                <span class="text-sm font-medium text-gray-600">Apartment ID:</span>
-                <span class="ml-2 text-gray-800 font-medium">{{ payment.apartment_id }}</span>
+              <div class="flex items-center gap-3 bg-gray-50 p-3 rounded-md">
+                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <div>
+                  <p class="text-sm font-medium text-gray-600">Apartment ID</p>
+                  <p class="text-base font-semibold text-gray-900">{{ payment.apartment_id }}</p>
+                </div>
               </div>
             </div>
           </div>
@@ -154,25 +137,14 @@ onMounted(fetchPayment)
 </template>
 
 <style scoped>
-@import 'animate.css';
-.animate__fadeIn { animation-duration: 0.5s; }
-.animate__delay-1s { animation-delay: 0.3s; }
-.animate__bounceIn { animation-duration: 0.5s; }
 
-/* Smooth transitions for hover effects */
-button:hover {
-  transform: scale(1.05);
+
+/* Custom spinner for loading state */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
-
-/* Card hover effect */
-.bg-white\/95:hover {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-
-/* Responsive adjustments */
-@media (max-width: 640px) {
-  .space-y-6 > div {
-    padding: 0.5rem;
-  }
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
 </style>

@@ -28,6 +28,7 @@ import TenantDetails from '@/components/tenants/TenantDetails.vue'
 import EditTenant from '@/components/tenants/EditTenant.vue'
 import AllocateHouse from '@/components/tenants/AllocateHouse.vue'
 import TenantManagementVue from '@/components/tenants/TenantManagement.vue'
+import EmployeeDetails from '@/components/employees/EmployeeDetails.vue'
 
 const routes = [
   // Public Routes (No Sidebar, Navbar visible)
@@ -148,6 +149,12 @@ const routes = [
         path: 'dashboard/employees/add',
         name: 'Add Employees',
         component: AddNewEmployee,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: '/dashboard/employees/:id',
+        name: 'EmployeeDetails',
+        component: EmployeeDetails,
         meta: { requiresAuth: true },
       },
       {
