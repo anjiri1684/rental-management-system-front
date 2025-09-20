@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import axios from 'axios'
+import apiClient from '../../services/apiClient' // Import the API client
 import Papa from 'papaparse'
 import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend } from 'chart.js'
 import { Pie, Bar } from 'vue-chartjs'
@@ -30,11 +30,11 @@ const fetchReports = async () => {
   loading.value = true
   try {
     // Fetch tenant report
-    const tenantResponse = await axios.get('http://localhost:8080/api/v1/reports/tenants')
+    const tenantResponse = await apiClient.get('/reports/tenants')
     tenantReport.value = tenantResponse.data
 
     // Fetch payment report
-    const paymentResponse = await axios.get('http://localhost:8080/api/v1/reports/payments', {
+    const paymentResponse = await apiClient.get('/reports/payments', {
       params: {
         start_date: paymentStartDate.value,
         end_date: paymentEndDate.value,
@@ -43,7 +43,7 @@ const fetchReports = async () => {
     paymentReport.value = paymentResponse.data
 
     // Fetch message report
-    const messageResponse = await axios.get('http://localhost:8080/api/v1/reports/messages', {
+    const messageResponse = await apiClient.get('/reports/messages', {
       params: {
         start_date: messageStartDate.value,
         end_date: messageEndDate.value,

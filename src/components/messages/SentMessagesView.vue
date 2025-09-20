@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import axios from 'axios'
+import apiClient from '../../services/apiClient' // Import the API client
 
 // Message state
 const messages = ref([])
@@ -23,7 +23,7 @@ const toast = useToast()
 const fetchMessages = async () => {
   loading.value = true
   try {
-    const response = await axios.get('http://localhost:8080/api/v1/messages', {
+    const response = await apiClient.get('/messages', {
       params: {
         page: page.value,
         limit: limit.value,

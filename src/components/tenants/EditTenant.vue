@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import axios from 'axios';
+import apiClient from '../../services/apiClient'; // Import the API client
 import { useToast } from 'vue-toastification';
 import { User, Mail, Phone, Hash, Home, Layers, Save, XCircle, ArrowLeft } from 'lucide-vue-next';
 
@@ -13,7 +13,7 @@ const form = ref({
   phoneNumber: '',
   idNumber: '',
   houseNumber: '',
-  unitType: '', // This will be bound to the select input
+  unitType: '',
   nextOfKinFirstName: '',
   nextOfKinLastName: '',
   nextOfKinPhone: '',
@@ -42,7 +42,7 @@ const fetchTenantForEdit = async () => {
   loading.value = true;
   error.value = null;
   try {
-    const response = await axios.get(`http://localhost:8080/api/v1/tenants/${route.params.id}`);
+    const response = await apiClient.get(`/tenants/${route.params.id}`);
     const tenantData = response.data.data;
     // Map backend snake_case to camelCase for form fields
     form.value = {
@@ -52,7 +52,7 @@ const fetchTenantForEdit = async () => {
       phoneNumber: tenantData.phone_number,
       idNumber: tenantData.id_number,
       houseNumber: tenantData.house_number,
-      unitType: tenantData.unit_type, // Populate with existing unit type
+      unitType: tenantData.unit_type,
       nextOfKinFirstName: tenantData.next_of_kin_first_name,
       nextOfKinLastName: tenantData.next_of_kin_last_name,
       nextOfKinPhone: tenantData.next_of_kin_phone,
@@ -70,14 +70,14 @@ const updateTenant = async () => {
   loading.value = true;
   error.value = null;
   try {
-    await axios.patch(`http://localhost:8080/api/v1/tenants/${route.params.id}`, {
+    await apiClient.patch(`/tenants/${route.params.id}`, {
       first_name: form.value.firstName,
       last_name: form.value.lastName,
       email: form.value.email,
       phone_number: form.value.phoneNumber,
       id_number: form.value.idNumber,
       house_number: form.value.houseNumber,
-      unit_type: form.value.unitType, // Send the selected unit type
+      unit_type: form.value.unitType,
       next_of_kin_first_name: form.value.nextOfKinFirstName,
       next_of_kin_last_name: form.value.nextOfKinLastName,
       next_of_kin_phone: form.value.nextOfKinPhone,

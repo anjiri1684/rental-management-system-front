@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
-import axios from 'axios';
+import apiClient from '../../services/apiClient';
 
 // Import child components
 import WaterBillTable from './WaterBillTable.vue';
@@ -36,7 +36,7 @@ const updateStatus = ref({
 const fetchTenants = async () => {
   loadingTenants.value = true;
   try {
-    const response = await axios.get('http://localhost:8080/api/v1/tenants');
+    const response = await apiClient.get('/tenants');
     tenants.value = response.data.data || [];
     if (!tenants.value.length) {
       toast.warning('No tenants available. Please add tenants first.');
@@ -53,7 +53,7 @@ const fetchTenants = async () => {
 const fetchWaterBills = async () => {
   loadingWaterBills.value = true;
   try {
-    const response = await axios.get('http://localhost:8080/api/v1/bills');
+    const response = await apiClient.get('/bills');
     waterBills.value = response.data.data || [];
     if (!waterBills.value.length && !errorMessage.value) { // Only show if no other error is present
       errorMessage.value = 'No water bills found.';
@@ -76,7 +76,7 @@ const addWaterBill = async (billData) => {
       tenant_id: parseInt(billData.tenantId),
       current_reading: parseFloat(billData.currentReading),
     };
-    const response = await axios.post('http://localhost:8080/api/v1/tenants/water-bills', payload);
+    const response = await apiClient.post('/tenants/water-bills', payload);
     toast.success(response.data.message || 'Water bill added successfully!');
     showAddModal.value = false;
     newBill.value = { tenantId: '', currentReading: '' }; // Reset form
@@ -92,7 +92,7 @@ const addWaterBill = async (billData) => {
 const updateBillStatus = async (statusData) => {
   isUpdatingStatus.value = true;
   try {
-    await axios.patch(`http://localhost:8080/api/v1/bills/${statusData.id}/status`, {
+    await apiClient.patch(`/bills/${statusData.id}/status`, {
       status: statusData.status,
     });
     toast.success('Bill status updated successfully!');

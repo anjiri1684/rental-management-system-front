@@ -1,7 +1,7 @@
 <script setup>
-import { ref, watch } from 'vue' // Added watch for better validation
+import { ref, watch } from 'vue' 
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import apiClient from '../../services/apiClient' // Import the API client
 import { useToast } from 'vue-toastification'
 
 // Form state
@@ -211,7 +211,7 @@ const confirmSubmit = async () => {
   })
 
   try {
-    await axios.post('http://localhost:8080/api/v1/apartments/batch-add', { apartments: apartmentsToCreate })
+    await apiClient.post('/apartments/batch-add', { apartments: apartmentsToCreate })
 
     loading.value = false
     showConfirmModal.value = false

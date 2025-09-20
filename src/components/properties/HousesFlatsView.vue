@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import apiClient from '../../services/apiClient' // Import the API client
 import { useToast } from 'vue-toastification'
 
 // State for apartment summaries
@@ -18,7 +18,7 @@ const fetchApartmentSummaries = async () => { // Renamed function
   loading.value = true
   error.value = null
   try {
-    const response = await axios.get('http://localhost:8080/api/v1/apartments/summary') // Changed endpoint
+    const response = await apiClient.get('/apartments/summary') // Changed endpoint
     apartmentSummaries.value = response.data.data // Data structure is now directly the array of summaries
   } catch (err) {
     error.value = err.response?.data?.error || 'Failed to fetch apartment summaries'

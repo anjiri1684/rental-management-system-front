@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import axios from 'axios';
+import apiClient from '../../services/apiClient'; // Import the API client
 import { useToast } from 'vue-toastification';
 import { User, Mail, Phone, Hash, Home, Layers, Edit, LogOut, AlertCircle, ArrowLeft } from 'lucide-vue-next';
 
@@ -21,7 +21,7 @@ const fetchTenant = async () => {
   loading.value = true;
   error.value = null;
   try {
-    const response = await axios.get(`http://localhost:8080/api/v1/tenants/${route.params.id}`);
+    const response = await apiClient.get(`/tenants/${route.params.id}`);
     tenant.value = response.data.data;
   } catch (err) {
     error.value = err.response?.data?.error || 'Failed to fetch tenant details.';
@@ -36,7 +36,7 @@ const confirmVacate = async () => {
   loading.value = true;
   error.value = null;
   try {
-    await axios.patch(`http://localhost:8080/api/v1/tenants/${route.params.id}`, {
+    await apiClient.patch(`/tenants/${route.params.id}`, {
       is_active: false,
     });
     tenant.value.is_active = false; // Update local state immediately

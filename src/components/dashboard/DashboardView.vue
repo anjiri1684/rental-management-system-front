@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
-import axios from 'axios';
+import apiClient from '../../services/apiClient';
 
 // Import child components
 import DashboardHeader from './DashboardHeader.vue';
@@ -18,7 +18,7 @@ const accountBalance = ref(0); // Overall account balance
 const recentMessages = ref(0);
 const pendingTasks = ref(0);
 const activities = ref([]);
-const adminName = ref('Vincent Anjiri');
+const adminName = ref('');
 const loading = ref(false);
 const errorMessage = ref('');
 
@@ -80,12 +80,12 @@ const fetchDashboardData = async (page = 1) => {
       waterBillBalance,
       activitiesResponse
     ] = await Promise.all([
-      axios.get('http://localhost:8080/api/v1/tenants/stats'),
-      axios.get('http://localhost:8080/api/v1/account/balance'),
-      axios.get('http://localhost:8080/api/v1/messages/stats'),
-      axios.get('http://localhost:8080/api/v1/tasks/pending'),
-      axios.get('http://localhost:8080/api/v1/account/water-bill-balance'),
-      axios.get('http://localhost:8080/api/v1/activities', {
+      apiClient.get('/tenants/stats'),
+      apiClient.get('/account/balance'),
+      apiClient.get('/messages/stats'),
+      apiClient.get('/tasks/pending'),
+      apiClient.get('/account/water-bill-balance'),
+      apiClient.get('/activities', {
         params: { page, limit: itemsPerPage.value }
       })
     ]);

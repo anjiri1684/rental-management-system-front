@@ -2,8 +2,8 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import axios from 'axios'
 import PaymentActions from './PaymentActions.vue'
+import apiClient from '@/services/apiClient'
 
 const payments = ref([])
 const loading = ref(false)
@@ -23,7 +23,7 @@ const toast = useToast()
 const fetchPayments = async () => {
   loading.value = true
   try {
-    const response = await axios.get('http://localhost:8080/api/v1/payments', {
+    const response = await apiClient.get('/payments', {
       params: {
         page: page.value,
         limit: limit.value,
@@ -80,9 +80,9 @@ const handlePaymentAction = async (action, paymentId) => {
   try {
     let response
     if (action === 'confirm') {
-      response = await axios.patch(`http://localhost:8080/api/v1/payments/${paymentId}/confirm`)
+      response = await apiClient.patch(`/payments/${paymentId}/confirm`)
     } else if (action === 'validate') {
-      response = await axios.post(`http://localhost:8080/api/v1/payments/${paymentId}/validate`)
+      response = await apiClient.post(`/payments/${paymentId}/validate`)
     }
     toast.success(response.data.message || `${action.charAt(0).toUpperCase() + action.slice(1)} successful`)
     fetchPayments() // Refresh payments

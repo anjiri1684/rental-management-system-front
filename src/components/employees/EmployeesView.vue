@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import axios from 'axios'
+import apiClient from '../../services/apiClient' 
 
 // State for employees and pagination
 const employees = ref([])
@@ -34,7 +34,7 @@ const fetchEmployees = async (page = 1) => {
   loading.value = true
   error.value = null
   try {
-    const response = await axios.get('http://localhost:8080/api/v1/employees', {
+    const response = await apiClient.get('/employees', {
       params: {
         page,
         limit: pagination.value.limit,
@@ -89,7 +89,7 @@ const deactivateEmployee = (employee) => {
 const confirmDeactivate = async () => {
   if (selectedEmployee.value) {
     try {
-      await axios.patch(`http://localhost:8080/api/v1/employees/deactivate/${selectedEmployee.value.id}`, { is_active: false })
+      await apiClient.patch(`/employees/deactivate/${selectedEmployee.value.id}`, { is_active: false })
       employees.value = employees.value.map(emp =>
         emp.id === selectedEmployee.value.id ? { ...emp, isActive: false } : emp
       )
@@ -132,7 +132,7 @@ const validatePayForm = () => {
 const confirmPay = async () => {
   if (validatePayForm()) {
     try {
-      await axios.post(`http://localhost:8080/api/v1/employees/${selectedEmployee.value.id}/pay`, {
+      await apiClient.post(`/employees/${selectedEmployee.value.id}/pay`, {
         phone_number: payPhoneNumber.value,
         amount: Number(payAmount.value),
       })

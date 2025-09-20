@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import axios from 'axios'
+import apiClient from '../../services/apiClient' // Import the API client
 import { useToast } from 'vue-toastification'
 import { ArrowLeft, CheckCircle, Info, Home, User, Loader2 } from 'lucide-vue-next' // Added Info, Home, User, Loader2 for icons
 
@@ -20,7 +20,7 @@ const fetchTenant = async () => {
   loading.value = true
   error.value = null
   try {
-    const response = await axios.get(`http://localhost:8080/api/v1/tenants/${route.params.id}`)
+    const response = await apiClient.get(`/tenants/${route.params.id}`)
     tenant.value = {
       id: response.data.data.id,
       firstName: response.data.data.first_name,
@@ -42,7 +42,7 @@ const fetchTenant = async () => {
 // Fetch available apartments
 const fetchApartments = async () => {
   try {
-    const response = await axios.get('http://localhost:8080/api/v1/apartments?status=vacant')
+    const response = await apiClient.get('/apartments?status=vacant')
     apartments.value = response.data.data || []
     console.log('Vacant Apartments:', apartments.value)
     if (apartments.value.length === 0) {
@@ -67,7 +67,7 @@ const allocateHouse = async () => {
     return
   }
   try {
-    await axios.patch(`http://localhost:8080/api/v1/tenants/${tenant.value.id}/allocate-house`, {
+    await apiClient.patch(`/tenants/${tenant.value.id}/allocate-house`, {
       apartmentId: selectedApartment.id,
       houseNumber: selectedApartment.house_number,
       unitType: selectedApartment.unit_type,

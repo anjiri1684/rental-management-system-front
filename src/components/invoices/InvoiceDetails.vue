@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import axios from 'axios'
+import apiClient from '../../services/apiClient' 
 
 const invoice = ref({})
 const loading = ref(false)
@@ -19,7 +19,7 @@ const toast = useToast()
 const fetchInvoice = async () => {
     loading.value = true
     try {
-        const response = await axios.get(`http://localhost:8080/api/v1/invoices/${route.params.id}`)
+        const response = await apiClient.get(`/invoices/${route.params.id}`)
         invoice.value = response.data
         console.log('Fetched invoice:', invoice.value)
     } catch (error) {
@@ -68,7 +68,7 @@ const updateInvoiceStatus = async () => {
 
     updating.value = true
     try {
-        const response = await axios.patch(`http://localhost:8080/api/v1/invoices/${invoice.value.invoice.id}/status`, {
+        const response = await apiClient.patch(`/invoices/${invoice.value.invoice.id}/status`, {
             status: newStatus.value
         })
         invoice.value.invoice = response.data.invoice

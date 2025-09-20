@@ -2,7 +2,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import axios from 'axios'
+import apiClient from '../../services/apiClient' 
 
 const tenantId = ref(null)
 const apartmentId = ref(null)
@@ -28,7 +28,7 @@ const toast = useToast()
 const fetchTenants = async () => {
     loadingTenants.value = true
     try {
-        const response = await axios.get('http://localhost:8080/api/v1/tenants', {
+        const response = await apiClient.get('/tenants', {
             params: { is_active: true }
         })
         tenants.value = response.data.data || []
@@ -49,7 +49,7 @@ const fetchApartments = async () => {
     }
     loadingApartments.value = true
     try {
-        const response = await axios.get('http://localhost:8080/api/v1/apartments', {
+        const response = await apiClient.get('/apartments', {
             params: { status: 'occupied' }
         })
         const tenant = tenants.value.find(t => t.id === tenantId.value)
@@ -93,7 +93,7 @@ const submitForm = () => {
 const confirmSubmit = async () => {
     loading.value = true
     try {
-        const response = await axios.post('http://localhost:8080/api/v1/invoices', {
+        const response = await apiClient.post('/invoices', {
             tenant_id: tenantId.value,
             apartment_id: apartmentId.value,
             amount: parseFloat(amount.value),

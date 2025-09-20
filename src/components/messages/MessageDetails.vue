@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import axios from 'axios'
+import apiClient from '../../services/apiClient' 
 
 const route = useRoute()
 const toast = useToast()
@@ -13,7 +13,7 @@ const errorMessage = ref('')
 const fetchMessageDetails = async () => {
   loading.value = true
   try {
-    const response = await axios.get(`http://localhost:8080/api/v1/messages/${route.params.id}`)
+    const response = await apiClient.get(`/messages/${route.params.id}`)
     messageDetails.value = response.data.data
   } catch (error) {
     errorMessage.value = error.response?.data?.error || error.message

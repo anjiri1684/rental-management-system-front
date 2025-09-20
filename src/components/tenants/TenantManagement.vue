@@ -7,6 +7,7 @@ import {
   User, Mail, Phone, Hash, Home, Layers, Eye, Edit, PlusCircle, LogOut, Bug,
   Loader2, Info, CheckCircle, XCircle // Added new icons for better visual cues
 } from 'lucide-vue-next'
+import apiClient from '@/services/apiClient'
 
 // State for tenants, apartments, and pagination
 const tenants = ref([])
@@ -36,7 +37,7 @@ const fetchTenants = async (page = 1) => {
   loading.value = true
   error.value = null
   try {
-    const response = await axios.get('http://localhost:8080/api/v1/tenants', {
+    const response = await apiClient.get('/tenants', {
       params: {
         page,
         limit: pagination.value.limit,
@@ -77,7 +78,7 @@ const fetchTenants = async (page = 1) => {
 const fetchApartments = async () => {
   loadingApartments.value = true
   try {
-    const response = await axios.get('http://localhost:8080/api/v1/apartments?status=vacant')
+    const response = await apiClient.get('/apartments?status=vacant')
     apartments.value = response.data.data || []
     console.log('Vacant Apartments:', apartments.value)
     if (apartments.value.length === 0) {

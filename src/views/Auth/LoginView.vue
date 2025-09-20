@@ -2,8 +2,7 @@
 import { RouterLink, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import { reactive, computed } from 'vue'
-import axios from 'axios'
-
+import apiClient from '../../services/apiClient'
 const router = useRouter()
 const toast = useToast()
 
@@ -37,10 +36,10 @@ const HandleLogin = async () => {
   }
 
   try {
-    const response = await axios.post('http://127.0.0.1:8080/api/v1/auth/login', loginData)
+    const response = await apiClient.post('/auth/login', loginData)
     const { token, user } = response.data
 
-    localStorage.setItem('authToken', token, user) // Consider storing user data separately or securely
+    localStorage.setItem('authToken', token, user)
 
     toast.success('Login successful!')
     console.log(loginData)

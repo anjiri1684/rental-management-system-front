@@ -63,7 +63,7 @@ const toggleSidebar = () => {
 }
 
 const handleLogout = () => {
-  localStorage.removeItem('authtoken')
+  localStorage.removeItem('authToken')
   router.push('/login')
 }
 

@@ -1,9 +1,10 @@
+
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import axios from 'axios'
-import { User, Home, DollarSign, Calendar, Clock, AlertCircle, ArrowLeft } from 'lucide-vue-next' // Added ArrowLeft for the back button
+import apiClient from '../../services/apiClient'
+import { User, Home, DollarSign, Calendar, Clock, AlertCircle, ArrowLeft } from 'lucide-vue-next'
 
 const payment = ref(null)
 const loading = ref(false)
@@ -16,7 +17,7 @@ const toast = useToast()
 const fetchPayment = async () => {
   loading.value = true
   try {
-    const response = await axios.get(`http://localhost:8080/api/v1/payments/${route.params.id}`)
+    const response = await apiClient.get(`/payments/${route.params.id}`)
     payment.value = response.data.data
   } catch (error) {
     errorMessage.value = error.response?.data?.error || 'Failed to fetch payment details'
@@ -29,7 +30,6 @@ const fetchPayment = async () => {
 // Load payment on mount
 onMounted(fetchPayment)
 </script>
-
 <template>
   <div class="min-h-screen bg-gray-50 p-6 md:p-8 lg:p-10 font-sans">
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">

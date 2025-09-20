@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import axios from 'axios'
+import apiClient from '../../services/apiClient'
 
 const invoices = ref([])
 const tenants = ref([])
@@ -26,7 +26,7 @@ const fetchInvoices = async () => {
         if (filterTenantId.value) params.tenant_id = filterTenantId.value
         if (filterStatus.value) params.status = filterStatus.value
         console.log('Fetching invoices with params:', params)
-        const response = await axios.get('http://localhost:8080/api/v1/invoices', { params })
+        const response = await apiClient.get('/invoices', { params })
         invoices.value = response.data.data || []
         console.log('Fetched invoices:', invoices.value)
     } catch (error) {
@@ -44,7 +44,7 @@ const fetchInvoices = async () => {
 const fetchTenants = async () => {
     loadingTenants.value = true
     try {
-        const response = await axios.get('http://localhost:8080/api/v1/tenants', {
+        const response = await apiClient.get('/tenants', {
             params: { is_active: true }
         })
         tenants.value = response.data.data || []
@@ -99,7 +99,7 @@ const updateInvoiceStatus = async () => {
 
     updating.value = true
     try {
-        const response = await axios.patch(`http://localhost:8080/api/v1/invoices/${selectedInvoice.value.id}/status`, {
+        const response = await apiClient.patch(`/invoices/${selectedInvoice.value.id}/status`, {
             status: newStatus.value
         })
 

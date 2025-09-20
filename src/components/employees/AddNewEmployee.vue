@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
+import apiClient from '../../services/apiClient' // Import the API client
 
 // Form state
 const firstName = ref('')
@@ -78,20 +79,10 @@ const confirmSubmit = async () => {
   }
 
   try {
-    const response = await fetch('http://localhost:8080/api/v1/employees/create', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload)
-    })
+    const response = await apiClient.post('/employees/create', payload)
 
-    if (!response.ok) {
-      throw new Error('Failed to add employee')
-    }
-
-    submissionStatus.value = { type: 'success', message: 'Employee added successfully!' }
-    toast.success("Employee added successfully!")
+    submissionStatus.value = { type: 'success', message: response.data.message || 'Employee added successfully!' }
+    toast.success(response.data.message || "Employee added successfully!")
     // Reset form
     resetForm()
     showConfirmModal.value = false
@@ -101,7 +92,12 @@ const confirmSubmit = async () => {
       router.push('/dashboard')
     }, 1500)
   } catch (error) {
-    submissionStatus.value = { type: 'error', message: error.message || 'An error occurred while adding the employee' }
+    console.error('Error adding employee:', error)
+    submissionStatus.value = {
+      type: 'error',
+      message: error.response?.data?.error || 'An error occurred while adding the employee'
+    }
+    toast.error(submissionStatus.value.message)
   } finally {
     isSubmitting.value = false
   }

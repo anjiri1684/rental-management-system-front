@@ -1,9 +1,8 @@
-
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import axios from 'axios'
+import apiClient from '../../services/apiClient' // Import the API client
 
 // Form state
 const tenantId = ref(null)
@@ -36,7 +35,7 @@ const toast = useToast()
 // Fetch tenants and apartments
 const fetchTenants = async () => {
   try {
-    const response = await axios.get('http://localhost:8080/api/v1/tenants')
+    const response = await apiClient.get('/tenants')
     tenants.value = response.data.data
     console.log('Fetched tenants:', tenants.value)
   } catch (error) {
@@ -47,7 +46,7 @@ const fetchTenants = async () => {
 
 const fetchApartments = async () => {
   try {
-    const response = await axios.get('http://localhost:8080/api/v1/apartments?status=occupied')
+    const response = await apiClient.get('/apartments?status=occupied')
     apartments.value = response.data.data
     console.log('Fetched apartments:', apartments.value)
   } catch (error) {
@@ -107,7 +106,7 @@ const submitForm = () => {
 const confirmSubmit = async () => {
   loading.value = true
   try {
-    await axios.post('http://localhost:8080/api/v1/payments', {
+    await apiClient.post('/payments', {
       tenantId: tenantId.value,
       apartmentId: apartmentId.value,
       amount: parseFloat(amount.value),

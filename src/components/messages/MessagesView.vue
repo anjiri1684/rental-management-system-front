@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import axios from 'axios'
+import apiClient from '../../services/apiClient' // Import the API client
 import Papa from 'papaparse'
 
 // Form state
@@ -25,7 +25,7 @@ const toast = useToast()
 // Fetch tenants and apartments
 const fetchTenants = async () => {
   try {
-    const response = await axios.get('http://localhost:8080/api/v1/tenants')
+    const response = await apiClient.get('/tenants')
     tenants.value = response.data.data
   } catch (error) {
     toast.error('Failed to fetch tenants: ' + (error.response?.data?.error || error.message))
@@ -34,7 +34,7 @@ const fetchTenants = async () => {
 
 const fetchApartments = async () => {
   try {
-    const response = await axios.get('http://localhost:8080/api/v1/apartments?status=occupied')
+    const response = await apiClient.get('/apartments?status=occupied')
     apartments.value = response.data.data
   } catch (error) {
     toast.error('Failed to fetch apartments: ' + (error.response?.data?.error || error.message))
@@ -123,7 +123,7 @@ const confirmSend = async () => {
     } else if (recipientType.value === 'CSV') {
       payload.phoneNumbers = parsedPhoneNumbers.value
     }
-    await axios.post('http://localhost:8080/api/v1/messages', payload)
+    await apiClient.post('/messages', payload)
     loading.value = false
     showConfirmModal.value = false
     showSuccessModal.value = true

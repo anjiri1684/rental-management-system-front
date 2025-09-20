@@ -108,8 +108,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import axios from 'axios'
-
+import apiClient from '../../services/apiClient'
 const employee = ref(null)
 const loading = ref(true)
 const error = ref(null)
@@ -123,7 +122,7 @@ const fetchEmployeeDetails = async () => {
   error.value = null
   try {
     const employeeId = route.params.id
-    const response = await axios.get(`http://localhost:8080/api/v1/employees/${employeeId}`)
+    const response = await apiClient.get(`/employees/${employeeId}`)
     employee.value = response.data.data
   } catch (err) {
     error.value = err.response?.data?.error || 'Failed to fetch employee details.'
